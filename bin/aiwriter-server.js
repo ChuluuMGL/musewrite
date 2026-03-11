@@ -48,10 +48,49 @@ function readBody(req) {
   });
 }
 
+// 输入验证
+function validateGenerateInput(body) {
+  const errors = [];
+
+  // source 必填
+  if (!body.source || typeof body.source !== 'string') {
+    errors.push('source 必须是非空字符串');
+  } else if (body.source.length > 10000) {
+    errors.push('source 长度不能超过 10000 字符');
+  }
+
+  // platform 可选，但必须是有效值
+  const validPlatforms = ['xiaohongshu', 'douyin', 'wechat', 'weibo', 'zhihu', 'bilibili',
+    'toutiao', 'baijiahao', 'wechat-video', 'twitter', 'instagram', 'tiktok',
+    'linkedin', 'youtube', 'facebook', 'reddit', 'wordpress'];
+  if (body.platform && !validPlatforms.includes(body.platform)) {
+    errors.push(`platform 必须是: ${validPlatforms.join(', ')} 之一`);
+  }
+
+  // info 可选，但必须是有效字符串
+  if (body.info && typeof body.info !== 'string') {
+    errors.push('info 必须是字符串');
+  }
+
+  // image 可选，但必须是布尔值
+  if (body.image !== undefined && typeof body.image !== 'boolean') {
+    errors.push('image 必须是布尔值');
+  }
+
+  return errors;
+}
+
 async function handleGenerate(body, taskId = null) {
   const { source, platform, info, checkFeedback, image } = body;
-  if (!source) throw new Error('Missing source');
-  
+
+  // 输入验证
+  const errors = validateGenerateInput(body);
+  if (errors.length > 0) {
+    const error = new Error('输入验证失败: ' + errors.join('; '));
+    error.code = 'VALIDATION_ERROR';
+    throw error;
+  }
+
   if (taskId) { taskQueue.startTask(taskId); taskQueue.updateProgress(taskId, 10, 'Starting...'); }
   
   const AgentCoordinator = require(path.join(ROOT, 'lib/AgentCoordinator'));
@@ -97,7 +136,53 @@ const server = http.createServer(async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   
   try {
-    if (pathname === '/api/v1/status' && req.method === 'GET') {
+    // ==================== 健康检查端点 ====================
+    if (pathname === '/health' && req.method === 'GET') {
+      // 轻量级健康检查（用于负载均衡器）
+      res.writeHead(200);
+      res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
+    }
+    else if (pathname === '/api/v1/health' && req.method === 'GET') {
+      // 深度健康检查
+      const health = {
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        version: '1.0.0',
+        checks: {
+          server: 'ok',
+          drafts: 'ok',
+          tasks: 'ok'
+        },
+        memory: {
+          used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+          total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+          unit: 'MB'
+        }
+      };
+
+      // 检查草稿目录
+      try {
+        fs.accessSync(DRAFTS_PATH, fs.constants.R_OK | fs.constants.W_OK);
+      } catch (e) {
+        health.checks.drafts = 'error: ' + e.message;
+        health.status = 'degraded';
+      }
+
+      // 检查任务队列
+      try {
+        const taskCount = Object.keys(taskQueue.tasks || {}).length;
+        health.checks.tasks = `ok (${taskCount} tasks)`;
+      } catch (e) {
+        health.checks.tasks = 'error: ' + e.message;
+        health.status = 'degraded';
+      }
+
+      const statusCode = health.status === 'healthy' ? 200 : 503;
+      res.writeHead(statusCode);
+      res.end(JSON.stringify(health, null, 2));
+    }
+    else if (pathname === '/api/v1/status' && req.method === 'GET') {
       res.writeHead(200);
       res.end(JSON.stringify({ success: true, service: 'MuseWrite API', version: '1.0.0', port, timestamp: new Date().toISOString(), features: { authentication: true, rateLimiting: true, idempotency: true, openapi: true }, tasks: { total: Object.keys(taskQueue.tasks).length, pending: Object.values(taskQueue.tasks).filter(t => t.status === 'pending').length, running: Object.values(taskQueue.tasks).filter(t => t.status === 'running').length }, apiKeys: { total: auth.keys.keys.length, active: auth.keys.keys.filter(k => k.lastUsed).length } }));
     }
@@ -318,4 +403,51 @@ server.listen(port, () => {
   console.log(`║  限流：60 次/分钟，1000 次/小时                            ║`);
   console.log(`║  幂等：X-Request-ID 头                                  ║`);
   console.log(`╚════════════════════════════════════════════════════════╝\n`);
+});
+
+// ==================== 优雅关闭 ====================
+let isShuttingDown = false;
+
+function gracefulShutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  console.log(`\n收到 ${signal} 信号，正在优雅关闭...`);
+
+  // 停止接受新连接
+  server.close(() => {
+    console.log('✅ HTTP 服务器已关闭');
+
+    // 保存任务队列
+    try {
+      taskQueue.save();
+      console.log('✅ 任务队列已保存');
+    } catch (e) {
+      console.log('⚠️ 任务队列保存失败:', e.message);
+    }
+
+    console.log('👋 MuseWrite 已安全关闭');
+    process.exit(0);
+  });
+
+  // 强制退出超时
+  setTimeout(() => {
+    console.log('⚠️ 强制关闭（超时）');
+    process.exit(1);
+  }, 10000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// 未捕获异常处理
+process.on('uncaughtException', (error) => {
+  console.error('❌ 未捕获异常:', error);
+  logger.logError(error, null, { type: 'uncaughtException' });
+  gracefulShutdown('uncaughtException');
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ 未处理的 Promise 拒绝:', reason);
+  logger.logError(new Error(String(reason)), null, { type: 'unhandledRejection' });
 });
