@@ -1,0 +1,44 @@
+{
+  "env": {
+    "node": true,
+    "es2024": true
+  },
+  "extends": ["eslint:recommended"],
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  },
+  "rules": {
+    "indentation": ["error", 2],
+    "linebreak-style": ["error", "unix"],
+    "quotes": ["error", "single", "avoid-escape"],
+    "semi": ["error", "always"],
+    "no-extra-semi": "error",
+    "no-unused-vars": "warn",
+    "no-undef": "error",
+    "eqeqeq": "off",
+    "prefer-const": "warn",
+    "no-console": ["warn", { "allow": ["warn", "error", "log"] }],
+    "prefer-template": "warn"
+    "prefer-arrow-callback": "warn"
+    "prefer-destructuring": "warn"
+    "no-duplicate-imports": "warn",
+    "object-shorthand": "off",
+    "comma-dangle": ["error", "never"],
+    "keyword-spacing": ["error", "always"]
+    "space-in-parens": "error",
+    "no-multiple-empty-lines": "warn",
+    "no-trailing-spaces": "warn",
+    "padded-blocks": "off",
+    "no-async-promise-executor": "off"
+    "max-len": ["warn", { "code": 150, "tabWidth": 4, "ignoreUrls": true, "ignoreTemplateLiterals": true }],
+    "max-params": ["warn", { "code": 5, "count": 10 }],
+    "max-lines-per-function": ["warn", { "code": 80, "comments": 5 }]
+    "complexity": ["warn", 15]
+    "no-await-in-loop": "off"
+    "require-await": "off"
+  }
+}

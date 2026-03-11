@@ -1,0 +1,11 @@
+# AI-Writer 定时任务配置
+# 使用方法：crontab -e 然后粘贴以下内容
+
+# 每天 9:00 生成每日总结
+0 9 * * * cd /Users/mac/Library/Mobile\ Documents/com~apple~CloudDocs/AI-Workspace/shared/projects/AI-Writer && node bin/aiwriter-cron.js daily-summary >> logs/cron.log 2>&1
+
+# 每天 17:00 检查内容质量
+0 17 * * * cd /Users/mac/Library/Mobile\ Documents/com~apple~CloudDocs/AI-Workspace/shared/projects/AI-Writer && node bin/aiwriter-cron.js content-check >> logs/cron.log 2>&1
+
+# 每小时检查 Worker 状态
+0 * * * * pgrep -f "aiwriter-worker" || (cd /Users/mac/Library/Mobile\ Documents/com~apple~CloudDocs/AI-Workspace/shared/projects/AI-Writer && node bin/aiwriter-worker.js --concurrency 2 >> logs/worker.log 2>&1 &)

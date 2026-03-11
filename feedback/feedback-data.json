@@ -1,0 +1,121 @@
+{
+  "feedbacks": [
+    {
+      "id": "fb_1773064732455",
+      "timestamp": "2026-03-09T13:58:52.455Z",
+      "date": "2026/3/9",
+      "draft": "restart-test.md",
+      "problem": "重启测试",
+      "suggestion": "测试成功",
+      "type": "test",
+      "account": "system",
+      "status": "pending",
+      "category": "other"
+    },
+    {
+      "id": "fb_1773050760059",
+      "timestamp": "2026-03-09T10:06:00.059Z",
+      "date": "2026/3/9",
+      "draft": "mini-test.md",
+      "problem": "Mini 测试反馈",
+      "suggestion": "测试成功",
+      "type": "xiaohongshu",
+      "account": "stone",
+      "status": "pending",
+      "category": "other"
+    },
+    {
+      "id": "fb_1773040714678",
+      "timestamp": "2026-03-09T07:18:34.678Z",
+      "date": "2026/3/9",
+      "draft": "test-luna.md",
+      "problem": "测试 Luna 集成",
+      "suggestion": "Luna 调用成功",
+      "type": "xiaohongshu",
+      "account": "stone",
+      "status": "pending",
+      "category": "other"
+    },
+    {
+      "id": "fb_1773040500490",
+      "timestamp": "2026-03-09T07:15:00.490Z",
+      "date": "2026/3/9",
+      "draft": "test-luna.md",
+      "problem": "测试 Luna 集成",
+      "suggestion": "Luna 调用成功",
+      "type": "xiaohongshu",
+      "account": "stone",
+      "status": "pending",
+      "category": "other"
+    },
+    {
+      "id": "fb_1773039813275",
+      "timestamp": "2026-03-09T07:03:33.275Z",
+      "date": "2026/3/9",
+      "draft": "",
+      "problem": "测试 API 反馈",
+      "suggestion": "API 很好用",
+      "type": "xiaohongshu",
+      "account": "stone",
+      "status": "pending",
+      "category": "other"
+    },
+    {
+      "id": "fb_1773038880570",
+      "timestamp": "2026-03-09T06:48:00.570Z",
+      "date": "2026/3/9",
+      "draft": "demo-001.md",
+      "problem": "标题 emoji 太多，要求纯文字",
+      "suggestion": "标题不要加 emoji，用纯文字",
+      "type": "xiaohongshu",
+      "account": "stone",
+      "status": "pending",
+      "category": "title"
+    },
+    {
+      "id": "fb_1773038353958",
+      "timestamp": "2026-03-09T06:39:13.958Z",
+      "date": "2026/3/9",
+      "draft": "test-002.md",
+      "problem": "正文用了 markdown 格式，应该用 emoji 分隔",
+      "suggestion": "正文用 emoji 组织，不用 markdown",
+      "type": "xiaohongshu",
+      "account": "stone",
+      "status": "pending",
+      "category": "body"
+    },
+    {
+      "id": "fb_1773038353922",
+      "timestamp": "2026-03-09T06:39:13.922Z",
+      "date": "2026/3/9",
+      "draft": "test-001.md",
+      "problem": "标题 emoji 太多，要求纯文字",
+      "suggestion": "标题不要加 emoji，用纯文字",
+      "type": "xiaohongshu",
+      "account": "stone",
+      "status": "pending",
+      "category": "title"
+    }
+  ],
+  "rules": [
+    {
+      "category": "title",
+      "rule": "标题不要加 emoji，用纯文字",
+      "frequency": 2,
+      "lastSeen": "2026/3/9",
+      "problems": [
+        "标题 emoji 太多，要求纯文字",
+        "标题 emoji 太多，要求纯文字"
+      ],
+      "suggestions": [
+        "标题不要加 emoji，用纯文字",
+        "标题不要加 emoji，用纯文字"
+      ]
+    }
+  ],
+  "stats": {
+    "total": 8,
+    "pending": 8,
+    "optimized": 0
+  }
+}

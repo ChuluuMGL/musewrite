@@ -1,0 +1,52 @@
+# Development files
+tests/
+docs/
+*.test.js
+test-*.js
+
+# Configuration
+.env*
+.eslint*
+.prettierrc*
+.editorconfig
+tsconfig.json
+types/
+
+# Project specific (may contain user data)
+drafts/
+cache/
+logs/
+feedback/
+data/
+
+# User info cards (privacy)
+config/info-cards/stone-info.md
+config/info-cards/zhoumo-info.md
+config/info-cards/yueyu-info.md
+config/info-cards/dayu-info.md
+config/info-cards/dayang-info.md
+
+# Docker files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation (keep README and LICENSE)
+*.md
+!README.md
+!LICENSE
+!CHANGELOG.md
+
+# GitHub
+.github/
+
+# Examples
+examples/
+
+# Templates
+templates/
+
+# Misc
+*.bak
+*.log
+*.tmp

@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  aiwriter:
+    build: .
+    container_name: aiwriter
+    ports:
+      - "18062:18062"
+    volumes:
+      - ./logs:/app/logs
+      - ./cache:/app/cache
+      - ./drafts:/app/drafts
+      - ./config:/app/config
+    environment:
+      - NODE_ENV=production
+      - ZAI_API_KEY=${ZAI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:18062/api/v1/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 监控仪表板（可选）
+  aiwriter-dashboard:
+    build: .
+    container_name: aiwriter-dashboard
+    ports:
+      - "18063:18063"
+    command: ["node", "bin/aiwriter-dashboard.js"]
+    depends_on:
+      - aiwriter
+    restart: unless-stopped
+
+  # Worker（可选）
+  aiwriter-worker:
+    build: .
+    container_name: aiwriter-worker
+    command: ["node", "bin/aiwriter-worker.js", "--concurrency", "2"]
+    depends_on:
+      - aiwriter
+    volumes:
+      - ./tasks:/app/tasks
+    restart: unless-stopped

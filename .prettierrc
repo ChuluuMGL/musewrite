@@ -1,0 +1,30 @@
+{
+  "semi": false,
+  "singleQuote": false,
+  "tabWidth": 2,
+  "useTabs": false,
+  "trailingComma": "es5",
+  "printWidth": 100,
+  "bracketSpacing": false,
+  "jsxSingleQuote": false,
+  "jsxBracketSameLine": false,
+  "arrowParens": "always",
+  "endOfLine": "lf",
+  "quoteProps": "as-needed",
+  "overrides": [
+    {
+      "files": "*.test.js",
+      "options": {
+        "semi": false,
+        "no-unused-vars": "off",
+        "max-lines-per-function": "off"
+      }
+    },
+    {
+      "files": "bin/**/*.js",
+      "options": {
+        "no-console": "off"
+      }
+    }
+  ]
+}

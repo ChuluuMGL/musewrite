@@ -1,0 +1,29 @@
+{
+  "total": 5,
+  "success": 0,
+  "failed": 5,
+  "avgScore": 0,
+  "avgDuration": 0,
+  "errors": [
+    {
+      "test": "小红书文案生成",
+      "error": "fetch is not a function"
+    },
+    {
+      "test": "公众号文章生成",
+      "error": "fetch is not a function"
+    },
+    {
+      "test": "WordPress 博客生成",
+      "error": "fetch is not a function"
+    },
+    {
+      "test": "抖音脚本生成",
+      "error": "fetch is not a function"
+    },
+    {
+      "test": "微博文案生成",
+      "error": "fetch is not a function"
+    }
+  ]
+}

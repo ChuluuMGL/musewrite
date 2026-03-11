@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+
+# Sensitive config
+config/api-keys.json
+
+# Build output
+dist/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# Cache
+cache/
+
+# Drafts (may contain sensitive data)
+drafts/*.json
+
+# User data (privacy)
+config/info-cards/stone-info.md
+config/info-cards/zhoumo-info.md
+config/info-cards/yueyu-info.md
+config/info-cards/dayu-info.md
+config/info-cards/dayang-info.md
+data/
+
+# IDE
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Debug
+*.bak
+
+# TypeScript
+*.tsbuildinfo

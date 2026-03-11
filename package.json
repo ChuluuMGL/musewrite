@@ -1,0 +1,69 @@
+{
+  "name": "ai-writer",
+  "version": "1.0.0",
+  "description": "AI 驱动的内容生成系统",
+  "main": "lib/ContentGenerator.js",
+  "bin": {
+    "aiwriter": "./bin/aiwriter.js",
+    "aiwriter-server": "./bin/aiwriter-server.js",
+    "aiwriter-init": "./bin/aiwriter-init-info.js"
+  },
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:llm": "jest tests/llmProvider.test.js",
+    "test:quality": "jest tests/qualityScorer.test.js",
+    "test:integration": "jest tests/integration/",
+    "test:all": "npm run test && npm run test:integration",
+    "lint": "eslint lib bin tests",
+    "lint:fix": "eslint lib bin tests --fix",
+    "format": "prettier --write \"lib/**/*.js\" \"bin/**/*.js\" \"tests/**/*.js\"",
+    "format:check": "prettier --check \"lib/**/*.js\" \"bin/**/*.js\" \"tests/**/*.js\"",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "audit": "npm audit --audit-level=moderate",
+    "audit:fix": "npm audit fix",
+    "security": "npm run audit && npm run lint",
+    "config": "node bin/aiwriter.js config",
+    "init": "node bin/aiwriter-init-info.js",
+    "start": "node bin/aiwriter-server.js",
+    "cli": "node bin/aiwriter.js",
+    "prepare": "husky install"
+  },
+  "keywords": [
+    "ai",
+    "content-generation",
+    "writing",
+    "llm"
+  ],
+  "author": "Zhoumo",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/username/ai-writer.git"
+  },
+  "dependencies": {
+    "@vercel/og": "^0.10.0",
+    "express": "^4.22.1",
+    "js-yaml": "^4.1.1",
+    "node-fetch": "^3.3.2",
+    "satori": "^0.24.1",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "husky": "^9.1.7",
+    "typescript": "^5.4.0",
+    "@types/node": "^20.11.0",
+    "@types/jest": "^29.5.0",
+    "@types/express": "^4.17.21",
+    "@types/node-fetch": "^2.6.11"
+  }
+}
