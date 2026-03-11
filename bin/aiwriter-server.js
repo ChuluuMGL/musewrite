@@ -99,7 +99,7 @@ const server = http.createServer(async (req, res) => {
   try {
     if (pathname === '/api/v1/status' && req.method === 'GET') {
       res.writeHead(200);
-      res.end(JSON.stringify({ success: true, service: 'AI-Writer API', version: '0.6.0', port, timestamp: new Date().toISOString(), features: { authentication: true, rateLimiting: true, idempotency: true, openapi: true }, tasks: { total: Object.keys(taskQueue.tasks).length, pending: Object.values(taskQueue.tasks).filter(t => t.status === 'pending').length, running: Object.values(taskQueue.tasks).filter(t => t.status === 'running').length }, apiKeys: { total: auth.keys.keys.length, active: auth.keys.keys.filter(k => k.lastUsed).length } }));
+      res.end(JSON.stringify({ success: true, service: 'MuseWrite API', version: '1.0.0', port, timestamp: new Date().toISOString(), features: { authentication: true, rateLimiting: true, idempotency: true, openapi: true }, tasks: { total: Object.keys(taskQueue.tasks).length, pending: Object.values(taskQueue.tasks).filter(t => t.status === 'pending').length, running: Object.values(taskQueue.tasks).filter(t => t.status === 'running').length }, apiKeys: { total: auth.keys.keys.length, active: auth.keys.keys.filter(k => k.lastUsed).length } }));
     }
     else if (pathname === '/api/v1/generate' && req.method === 'POST') {
       const body = await readBody(req);
@@ -310,7 +310,8 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(port, () => {
   console.log(`\n╔════════════════════════════════════════════════════════╗`);
-  console.log(`║           AI-Writer API Server v0.6.0                  ║`);
+  console.log(`║           MuseWrite API Server v1.0.0                  ║`);
+  console.log(`║           灵感驱动，智能写作                              ║`);
   console.log(`╠════════════════════════════════════════════════════════╣`);
   console.log(`║  URL: http://localhost:${port}                            ║`);
   console.log(`║  认证：API Key (X-API-Key)                              ║`);

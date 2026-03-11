@@ -1,12 +1,12 @@
 {
-  "name": "ai-writer",
+  "name": "musewrite",
   "version": "1.0.0",
-  "description": "AI 驱动的内容生成系统",
+  "description": "MuseWrite - AI 驱动的智能写作系统 | AI-Powered Intelligent Writing System",
   "main": "lib/ContentGenerator.js",
   "bin": {
-    "aiwriter": "./bin/aiwriter.js",
-    "aiwriter-server": "./bin/aiwriter-server.js",
-    "aiwriter-init": "./bin/aiwriter-init-info.js"
+    "musewrite": "./bin/aiwriter.js",
+    "musewrite-server": "./bin/aiwriter-server.js",
+    "musewrite-init": "./bin/aiwriter-init-info.js"
   },
   "scripts": {
     "test": "jest",
@@ -33,10 +33,12 @@
     "prepare": "husky install"
   },
   "keywords": [
-    "ai",
+    "musewrite",
+    "ai-writing",
     "content-generation",
-    "writing",
-    "llm"
+    "llm",
+    "multilingual",
+    "multi-platform"
   ],
   "author": "Zhoumo",
   "license": "MIT",
@@ -45,7 +47,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/username/ai-writer.git"
+    "url": "https://github.com/username/musewrite.git"
   },
   "dependencies": {
     "@vercel/og": "^0.10.0",

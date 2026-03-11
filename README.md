@@ -1,29 +1,30 @@
-# AI-Writer
+# MuseWrite
 
-[![npm version](https://img.shields.io/npm/v/ai-writer.svg)](https://www.npmjs.com/package/ai-writer)
+[![npm version](https://img.shields.io/npm/v/musewrite.svg)](https://www.npmjs.com/package/musewrite)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Website](https://img.shields.io/badge/website-musewrite.ai-blue.svg)](https://musewrite.ai)
 
-> **版本**: 1.0.0
-> **定位**: AI 驱动的内容生成系统
-> **状态**: 猟准就绪
-> **更新时间**: 2026-03-10
+> **MuseWrite** - 灵感驱动，智能写作
+>
+> **版本**: 1.0.0 | **状态**: Production Ready | **更新**: 2026-03-11
 
 ---
 
-## 项目简介
+## 简介
 
-AI-Writer 是一个基于卡片组合的 AI 内容生成系统，与 AI Publisher 配合使用：
+**MuseWrite** 是一个基于四层卡片系统的 AI 智能写作平台，灵感源于缪斯女神（Muse），让创作如流水般自然。
 
 ```
-AI-Writer（生成内容 + 配图）→ AI Publisher（发布内容）
+素材 → 信息 → 风格 → 平台 → 灵感成文
 ```
 
-**v1.0.0 新增**:
-- 7 种 LLM Provider 支持
-- 16 个平台支持
-- 敏感词过滤
-- 任务队列
-- Docker 部署
+**核心特色**:
+- 🎴 **四层卡片系统** - 素材卡 → 信息卡 → 风格卡 → 平台卡
+- 🤖 **7 种 LLM 支持** - OpenAI, Claude, 智谱, DeepSeek, Gemini, 火山引擎, Ollama
+- 📱 **16 个平台适配** - 小红书、抖音、微信、知乎等 9 个国内 + 7 个国际平台
+- 🎨 **AI 配图生成** - SeedDream AI 自动生成封面图
+- 🔄 **版本管理** - 草稿版本控制与回滚
+- ✅ **审核流程** - 提交、批准、拒绝、修改请求
 
 ---
 
