@@ -3,6 +3,9 @@ node_modules/
 
 # Sensitive config
 config/api-keys.json
+.env
+.env.local
+.env.*.local
 
 # Build output
 dist/
