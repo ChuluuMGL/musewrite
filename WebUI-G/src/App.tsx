@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
+import { apiService } from './services/api';
 import { 
   PenTool, 
   Sparkles, 
@@ -395,63 +396,25 @@ export default function App() {
     setIsGenerating(true);
     
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error("API_KEY_MISSING");
-      }
-
-      const ai = new GoogleGenAI({ apiKey });
-      const model = "gemini-3-flash-preview";
-      
-      const prompt = `
-        你是一个名为 "${currentIdentity.name}" 的创作者，你的背景是: ${currentIdentity.bio}。
-        请根据以下核心信息，使用 "${currentStyle.name}" 的风格（${currentStyle.desc}）创作一段内容。
-        
-        核心信息: ${extractedInfo}
-        
-        请以 JSON 格式返回结果，包含以下字段:
-        - title: 吸引人的标题
-        - content: 正文内容
-        - tags: 3-5个相关的标签（数组）
-        - score: 对内容的评分 (0-100)
-        - wordCount: 正文字数
-      `;
-
-      const response = await ai.models.generateContent({
-        model: selectedModel,
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json"
-        }
+      const response = await apiService.generateContent({
+        source: extractedInfo,
+        platform: selectedPlatforms[0], // 暂时取第一个
+        info: currentIdentity.name,
+        style: currentStyle.name,
+        image: autoImage
       });
 
-      const result = JSON.parse(response.text);
+      if (!response.success) throw new Error("GENERATION_FAILED");
 
-      // Generate image if requested
-      if (autoImage) {
-        const imageResponse = await ai.models.generateContent({
-          model: selectedModel,
-          contents: {
-            parts: [{ text: `为以下内容生成一张配图：\n标题：${result.title}\n内容：${result.content}` }]
-          },
-          config: {
-            imageConfig: {
-              aspectRatio: "1:1",
-              imageSize: "1K"
-            }
-          }
-        });
+      const result = {
+        ...response.draft,
+        score: response.quality?.score || 80,
+        wordCount: response.draft.content.length,
+        imageUrl: response.imageUrl
+      };
 
-        for (const part of imageResponse.candidates?.[0]?.content?.parts || []) {
-          if (part.inlineData) {
-            result.imageUrl = `data:image/png;base64,${part.inlineData.data}`;
-            break;
-          }
-        }
-      }
-
-      setGenerationResult(result);
-      setEditableResult(result);
+      setGenerationResult(result as any);
+      setEditableResult(result as any);
       setActivePreviewTab('master');
       setHistory(prev => {
         const newHistory = [result, ...prev].slice(0, 20);
@@ -473,72 +436,25 @@ export default function App() {
     setMainView('result');
     
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error("API_KEY_MISSING");
-
-      const ai = new GoogleGenAI({ apiKey });
-      
-      // First, extract info silently
-      const extractPrompt = `
-        你是一个专业的信息提取专家。请从以下素材中提取核心信息点、关键事实和重要数据。
-        素材: ${material}
-        请以简洁的列表形式返回。
-      `;
-      const extractResponse = await ai.models.generateContent({
-        model: selectedModel,
-        contents: extractPrompt
-      });
-      const info = extractResponse.text;
-      setExtractedInfo(info);
-
-      // Then generate content
-      const generatePrompt = `
-        你是一个名为 "${currentIdentity.name}" 的创作者，你的背景是: ${currentIdentity.bio}。
-        请根据以下核心信息，使用 "${currentStyle.name}" 的风格创作一段内容。
-        
-        核心信息: ${info}
-        
-        请以 JSON 格式返回结果，包含以下字段:
-        - title: 吸引人的标题
-        - content: 正文内容
-        - tags: 3-5个相关的标签（数组）
-        - score: 对内容的评分 (0-100)
-        - wordCount: 正文字数
-      `;
-
-      const generateResponse = await ai.models.generateContent({
-        model: selectedModel,
-        contents: generatePrompt,
-        config: { responseMimeType: "application/json" }
+      const response = await apiService.generateContent({
+        source: material,
+        platform: selectedPlatforms[0],
+        info: currentIdentity.name,
+        style: currentStyle.name,
+        image: autoImage
       });
 
-      const result = JSON.parse(generateResponse.text);
+      if (!response.success) throw new Error("GENERATION_FAILED");
 
-      // Generate image if requested
-      if (autoImage) {
-        const imageResponse = await ai.models.generateContent({
-          model: selectedModel,
-          contents: {
-            parts: [{ text: `为以下内容生成一张配图：\n标题：${result.title}\n内容：${result.content}` }]
-          },
-          config: {
-            imageConfig: {
-              aspectRatio: "1:1",
-              imageSize: "1K"
-            }
-          }
-        });
+      const result = {
+        ...response.draft,
+        score: response.quality?.score || 80,
+        wordCount: response.draft.content.length,
+        imageUrl: response.imageUrl
+      };
 
-        for (const part of imageResponse.candidates?.[0]?.content?.parts || []) {
-          if (part.inlineData) {
-            result.imageUrl = `data:image/png;base64,${part.inlineData.data}`;
-            break;
-          }
-        }
-      }
-
-      setGenerationResult(result);
-      setEditableResult(result);
+      setGenerationResult(result as any);
+      setEditableResult(result as any);
       setActivePreviewTab('master');
       setHistory(prev => {
         const newHistory = [result, ...prev].slice(0, 20);

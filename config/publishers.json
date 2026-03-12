@@ -1,0 +1,117 @@
+{
+  "version": "1.0",
+  "description": "MuseWrite 平台发布配置",
+  "platforms": {
+    "wechat": {
+      "enabled": false,
+      "name": "微信公众号",
+      "type": "official",
+      "appId": "",
+      "appSecret": "",
+      "features": ["图文", "多图文", "草稿", "定时发布"],
+      "limits": {
+        "titleMaxLength": 64,
+        "contentMaxLength": 20000,
+        "imagesPerArticle": 20
+      },
+      "setupGuide": "https://developers.weixin.qq.com/doc/offiaccount/Basic_Information/Get_access_token.html"
+    },
+    "weibo": {
+      "enabled": false,
+      "name": "微博",
+      "type": "official",
+      "appKey": "",
+      "appSecret": "",
+      "redirectUri": "",
+      "accessToken": "",
+      "features": ["微博", "长微博", "图片", "视频"],
+      "limits": {
+        "shortTextMax": 140,
+        "longTextMax": 2000,
+        "imagesMax": 9
+      },
+      "setupGuide": "https://open.weibo.com/wiki/2/statuses/update"
+    },
+    "zhihu": {
+      "enabled": false,
+      "name": "知乎",
+      "type": "official",
+      "clientId": "",
+      "clientSecret": "",
+      "accessToken": "",
+      "features": ["文章", "想法", "问题回答"],
+      "limits": {
+        "titleMaxLength": 50,
+        "contentMinLength": 100
+      },
+      "setupGuide": "https://www.zhihu.com/api"
+    },
+    "xiaohongshu": {
+      "enabled": false,
+      "name": "小红书",
+      "type": "manual",
+      "features": ["图文", "视频"],
+      "limits": {
+        "titleMaxLength": 20,
+        "contentMax": 1000,
+        "imagesMin": 3,
+        "imagesMax": 9,
+        "imageRatio": "3:4"
+      },
+      "setupGuide": "小红书暂无官方API，请手动发布",
+      "manualSteps": [
+        "打开小红书APP或网页版",
+        "点击 + 发布",
+        "粘贴标题和内容",
+        "上传封面和配图（建议3-9张，3:4比例）",
+        "添加相关话题标签",
+        "选择发布时间（可选）",
+        "点击发布"
+      ]
+    },
+    "douyin": {
+      "enabled": false,
+      "name": "抖音",
+      "type": "manual",
+      "features": ["短视频", "图文"],
+      "limits": {
+        "videoMaxDuration": "15分钟",
+        "imageCount": "2-12张"
+      },
+      "setupGuide": "抖音暂无个人API，请手动发布",
+      "manualSteps": [
+        "打开抖音APP",
+        "点击 + 发布",
+        "上传视频或图片",
+        "添加标题和话题",
+        "选择封面",
+        "点击发布"
+      ]
+    },
+    "wordpress": {
+      "enabled": false,
+      "name": "WordPress",
+      "type": "self-hosted",
+      "apiUrl": "",
+      "username": "",
+      "password": "",
+      "features": ["文章", "页面", "分类", "标签", "特色图片"],
+      "limits": {
+        "none": "无限制"
+      },
+      "setupGuide": "在WordPress后台 > 设置 > 固定链接 > 开启REST API"
+    },
+    "toutiao": {
+      "enabled": false,
+      "name": "今日头条",
+      "type": "official",
+      "clientId": "",
+      "clientSecret": "",
+      "features": ["图文", "视频"],
+      "limits": {
+        "titleMaxLength": 30
+      },
+      "setupGuide": "https://mp.toutiao.com/"
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "version": "1.0",
+  "description": "飞书机器人配置",
+  "enabled": false,
+  "bot": {
+    "appId": "",
+    "appSecret": "",
+    "encryptKey": "",
+    "verificationToken": ""
+  },
+  "webhook": {
+    "url": "",
+    "secret": ""
+  },
+  "features": {
+    "dailyReminder": {
+      "enabled": false,
+      "time": "09:00",
+      "timezone": "Asia/Shanghai",
+      "message": "🌅 早安！今日创作提醒"
+    },
+    "publishNotification": {
+      "enabled": true,
+      "template": "📝 新内容已发布到 {platform}\n标题：{title}\n链接：{url}"
+    },
+    "reviewNotification": {
+      "enabled": true,
+      "template": "🔍 有新内容待审核\n标题：{title}\n提交人：{author}"
+    },
+    "feedbackReminder": {
+      "enabled": false,
+      "interval": "weekly",
+      "message": "📊 本周反馈统计"
+    }
+  },
+  "commands": {
+    "/generate": {
+      "enabled": true,
+      "description": "生成内容",
+      "usage": "/generate [主题] --persona [人设] --style [风格]"
+    },
+    "/review": {
+      "enabled": true,
+      "description": "查看待审核内容"
+    },
+    "/stats": {
+      "enabled": true,
+      "description": "查看创作统计"
+    },
+    "/help": {
+      "enabled": true,
+      "description": "帮助信息"
+    }
+  },
+  "permissions": {
+    "allowedUsers": [],
+    "allowedGroups": [],
+    "adminUsers": []
+  }
+}
