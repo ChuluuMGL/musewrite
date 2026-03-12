@@ -21,7 +21,7 @@ async function main() {
   console.log('╔════════════════════════════════════════════════════════╗');
   console.log('║          AI-Writer 错误处理测试                         ║');
   console.log('╚════════════════════════════════════════════════════════╝');
-  
+
   // 测试 1: 无认证
   await test(
     '无 API Key 访问',
@@ -32,7 +32,7 @@ async function main() {
       body: JSON.stringify({ source: 'test' })
     }
   );
-  
+
   // 测试 2: 无效 API Key
   await test(
     '无效 API Key',
@@ -46,7 +46,7 @@ async function main() {
       body: JSON.stringify({ source: 'test' })
     }
   );
-  
+
   // 测试 3: 缺少必需字段
   const API_KEY = process.env.AIWRITER_API_KEY || 'sk_19460aec9f6f16871b7ec36d2f14d01e';
   await test(
@@ -61,13 +61,13 @@ async function main() {
       body: JSON.stringify({ platform: 'xiaohongshu' })
     }
   );
-  
+
   // 测试 4: 无效端点
   await test(
     '无效端点',
     `${BASE_URL}/api/v1/invalid`
   );
-  
+
   console.log('\n✅ 错误处理测试完成\n');
 }
 

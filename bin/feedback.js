@@ -2,7 +2,7 @@
 
 /**
  * AI-Writer Feedback CLI
- * 
+ *
  * 用法:
  *   aiwriter feedback add --draft "xxx.md" --problem "问题" --suggestion "建议"
  *   aiwriter feedback list --days 7
@@ -62,25 +62,25 @@ AI-Writer Feedback 系统
       type: options.type || '',
       account: options.account || ''
     });
-    
+
     console.log('✅ 反馈已记录');
     console.log(`   ID: ${feedback.id}`);
     console.log(`   分类：${feedback.category}`);
     console.log(`   问题：${feedback.problem}`);
     console.log(`   建议：${feedback.suggestion}`);
-    
+
   } else if (command === 'list') {
     // 列出反馈
     const days = parseInt(options.days) || 7;
     const feedbacks = feedbackManager.listFeedback(days);
-    
+
     console.log(`\n📋 最近${days}天的反馈 (${feedbacks.length}条)\n`);
-    
+
     if (feedbacks.length === 0) {
       console.log('   暂无反馈');
       return;
     }
-    
+
     feedbacks.forEach((fb, index) => {
       console.log(`${index + 1}. [${fb.date}] ${fb.type || '未指定'} / ${fb.account || '未指定'}`);
       console.log(`   问题：${fb.problem}`);
@@ -88,16 +88,16 @@ AI-Writer Feedback 系统
       console.log(`   分类：${fb.category} | 状态：${fb.status}`);
       console.log('');
     });
-    
+
   } else if (command === 'analyze') {
     // 分析反馈
     const days = parseInt(options.days) || 30;
     const analysis = feedbackManager.analyzeFeedback(days);
-    
+
     console.log(`\n📊 反馈分析报告 (最近${days}天)\n`);
     console.log(`总反馈数：${analysis.totalFeedbacks}`);
     console.log(`提炼规则：${analysis.rules.length}条\n`);
-    
+
     if (analysis.rules.length > 0) {
       console.log('📝 提炼的规则:');
       analysis.rules.forEach((rule, index) => {
@@ -106,12 +106,12 @@ AI-Writer Feedback 系统
         console.log(`   最近发现：${rule.lastSeen}`);
       });
     }
-    
+
     console.log('\n📋 分类统计:');
     for (const [category, stats] of Object.entries(analysis.categoryStats)) {
       console.log(`   ${category}: ${stats.count}次`);
     }
-    
+
   } else {
     console.log(`未知命令：${command}`);
     console.log('使用 aiwriter feedback 查看用法');

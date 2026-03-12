@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * AI-Writer 监控仪表板
- * 
+ *
  * 用法: aiwriter-dashboard
  */
 
@@ -25,7 +25,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const statusRes = await fetch(`${API_URL}/api/v1/status`);
     status = await statusRes.json();
-    
+
     const tasksRes = await fetch(`${API_URL}/api/v1/tasks?limit=10`);
     const tasksData = await tasksRes.json();
     tasks = tasksData.tasks || [];
@@ -118,13 +118,13 @@ const server = http.createServer(async (req, res) => {
     <h2>📝 最近请求日志</h2>
     <div class="log">
 ${fs.existsSync('logs/requests.log') ? fs.readFileSync('logs/requests.log', 'utf-8').split('\n').reverse().slice(0, 20).map(line => {
-  try {
-    const log = JSON.parse(line);
-    return `<div>[${log.timestamp}] ${log.method} ${log.url} → ${log.statusCode} (${log.durationMs}ms)</div>`;
-  } catch (e) {
-    return '';
-  }
-}).join('') : '<div>暂无日志</div>'}
+    try {
+      const log = JSON.parse(line);
+      return `<div>[${log.timestamp}] ${log.method} ${log.url} → ${log.statusCode} (${log.durationMs}ms)</div>`;
+    } catch (e) {
+      return '';
+    }
+  }).join('') : '<div>暂无日志</div>'}
     </div>
   </div>
   

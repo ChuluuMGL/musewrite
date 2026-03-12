@@ -17,22 +17,22 @@ console.log('-'.repeat(30));
 try {
   const CardLoader = require('./lib/CardLoader');
   const loader = new CardLoader(CONFIG_PATH);
-  
+
   const stoneInfo = loader.loadInfoCard('stone');
   console.log('✅ stone-info.md 加载成功');
-  
+
   const stoneStyle = loader.loadStyleCard('stone');
   console.log('✅ stone-style.md 加载成功');
-  
+
   const xiaohongshu = loader.loadPlatformCard('xiaohongshu');
   console.log('✅ xiaohongshu.md 加载成功');
-  
+
   const infoCards = loader.listCards('info-cards');
   console.log(`✅ 信息卡: ${infoCards.length} 个`);
-  
+
   const platforms = loader.listPlatformCards();
   console.log(`✅ 平台卡: ${platforms.domestic.length + platforms.international.length} 个`);
-  
+
 } catch (e) {
   console.log('❌ CardLoader 测试失败:', e.message);
 }
@@ -44,24 +44,24 @@ console.log('-'.repeat(30));
 try {
   const FormatConverter = require('./lib/FormatConverter');
   const converter = new FormatConverter();
-  
+
   const title1 = converter.cleanTitle('🚀 今天完成了三层记忆系统改造');
   console.log(`✅ 标题清理: "${title1}"`);
-  
+
   const content = `## 今日进度
 
 - 完成了三层记忆系统改造
 - 优化了心跳加载逻辑
 - 效果：**10KB → 2KB**`;
-  
+
   const xiaohongshuContent = converter.convert(content, 'xiaohongshu');
   const hasMarkdown = xiaohongshuContent.includes('##') || xiaohongshuContent.includes('**');
   console.log(`✅ 小红书格式: ${hasMarkdown ? '❌ 还有markdown' : '✅ 已清除markdown'}`);
-  
+
   const wordpressContent = converter.convert(content, 'wordpress');
   const hasMarkdownWp = wordpressContent.includes('##') || wordpressContent.includes('**');
   console.log(`✅ WordPress格式: ${hasMarkdownWp ? '✅ 保留markdown' : '❌ 丢失markdown'}`);
-  
+
 } catch (e) {
   console.log('❌ FormatConverter 测试失败:', e.message);
 }
@@ -73,14 +73,14 @@ console.log('-'.repeat(30));
 try {
   const AgentCoordinator = require('./lib/AgentCoordinator');
   const coordinator = new AgentCoordinator(CONFIG_PATH);
-  
+
   const accounts = coordinator.listAccounts();
   console.log(`✅ 可用账号: ${accounts.length} 个`);
   accounts.forEach(a => console.log(`   - ${a.id}: ${a.name}`));
-  
+
   const platforms = coordinator.listPlatforms();
   console.log(`✅ 可用平台: ${platforms.domestic.length} 国内 + ${platforms.international.length} 海外`);
-  
+
 } catch (e) {
   console.log('❌ AgentCoordinator 测试失败:', e.message);
 }
@@ -133,6 +133,6 @@ console.log(`✅ 核心库: ${stats.libs} 个`);
 console.log(`✅ 文档: ${stats.docs} 个`);
 
 // 总结
-console.log('\n' + '='.repeat(50));
+console.log(`\n${  '='.repeat(50)}`);
 console.log('✅ 所有基础测试通过！');
 console.log('='.repeat(50));

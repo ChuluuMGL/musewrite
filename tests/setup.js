@@ -11,7 +11,7 @@ global.console = {
   ...console,
   log: jest.fn(),
   warn: jest.fn(),
-  error: jest.fn(),
+  error: jest.fn()
 };
 
 // Global test utilities
@@ -21,14 +21,14 @@ global.testUtils = {
     content: 'Test content with enough length to pass quality checks.',
     tags: ['test', 'jest'],
     platform: 'xiaohongshu',
-    ...overrides,
+    ...overrides
   }),
 
   mockConfig: (overrides = {}) => ({
     provider: 'mock',
     model: 'mock',
-    ...overrides,
-  }),
+    ...overrides
+  })
 };
 
 console.log('🧪 Jest test environment configured');

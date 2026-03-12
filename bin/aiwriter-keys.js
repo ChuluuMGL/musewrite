@@ -2,7 +2,7 @@
 
 /**
  * AI-Writer API Key 管理工具
- * 
+ *
  * 用法:
  *   aiwriter-keys list
  *   aiwriter-keys create --name "luna" --permissions "read,write"
@@ -44,34 +44,34 @@ if (command === 'list') {
       console.log(`   使用：${k.lastUsed || '未使用'} (${k.requestCount}次)\n`);
     });
   }
-  
+
 } else if (command === 'create') {
   const options = parseArgs(args);
   const name = options.name || 'unnamed';
   const permissions = options.permissions ? options.permissions.split(',') : ['read', 'write'];
-  
+
   const keyInfo = auth.generateKey(name, permissions);
   console.log('\n✅ API Key 已生成:\n');
   console.log(`   Key: ${keyInfo.key}`);
   console.log(`   名称：${keyInfo.name}`);
   console.log(`   权限：${keyInfo.permissions.join(', ')}\n`);
   console.log('⚠️  请保存此 Key，不会再次显示！\n');
-  
+
 } else if (command === 'revoke') {
   const options = parseArgs(args);
   const key = options.key;
-  
+
   if (!key) {
     console.log('❌ 请提供 API Key');
     process.exit(1);
   }
-  
+
   if (auth.revokeKey(key)) {
     console.log('✅ API Key 已撤销\n');
   } else {
     console.log('❌ API Key 不存在\n');
   }
-  
+
 } else {
   console.log(`
 AI-Writer API Key 管理

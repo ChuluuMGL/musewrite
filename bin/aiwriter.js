@@ -17,31 +17,31 @@ const command = args[0];
 
 async function main() {
   switch (command) {
-    case 'config': await runConfig(); break;
-    case 'draft': await runDraft(args.slice(1)); break;
-    case 'multi': await runMulti(args.slice(1)); break;
-    case 'check': await runCheck(args.slice(1)); break;
-    case 'publish': await runPublish(args.slice(1)); break;
-    case 'image': await runImage(args.slice(1)); break;
-    case 'review': await runReview(args.slice(1)); break;
-    case 'init': await runInit(args.slice(1)); break;
-    case 'config':
-    case 'interview':
-      // 委托给子命令
-      const { spawn } = require('child_process');
-      const subCmd = args[0] === 'config' ? 'aiwriter-config.js' : 'aiwriter-interview.js';
-      const subArgs = args[0] === 'config' ? args.slice(1) : args.slice(1);
-      const child = spawn(path.join(__dirname, subCmd), subArgs, { stdio: 'inherit' });
-      child.on('close', (code) => process.exit(code));
-      return;
-    case 'feedback': await runFeedback(args.slice(1)); break;
-    case 'help':
-    case '--help':
-    case '-h': showHelp(); break;
-    case 'version':
-    case '--version':
-    case '-v': showVersion(); break;
-    default: await runWrite(args);
+  case 'config': await runConfig(); break;
+  case 'draft': await runDraft(args.slice(1)); break;
+  case 'multi': await runMulti(args.slice(1)); break;
+  case 'check': await runCheck(args.slice(1)); break;
+  case 'publish': await runPublish(args.slice(1)); break;
+  case 'image': await runImage(args.slice(1)); break;
+  case 'review': await runReview(args.slice(1)); break;
+  case 'init': await runInit(args.slice(1)); break;
+  case 'config':
+  case 'interview':
+    // 委托给子命令
+    const { spawn } = require('child_process');
+    const subCmd = args[0] === 'config' ? 'aiwriter-config.js' : 'aiwriter-interview.js';
+    const subArgs = args[0] === 'config' ? args.slice(1) : args.slice(1);
+    const child = spawn(path.join(__dirname, subCmd), subArgs, { stdio: 'inherit' });
+    child.on('close', (code) => process.exit(code));
+    return;
+  case 'feedback': await runFeedback(args.slice(1)); break;
+  case 'help':
+  case '--help':
+  case '-h': showHelp(); break;
+  case 'version':
+  case '--version':
+  case '-v': showVersion(); break;
+  default: await runWrite(args);
   }
 }
 
@@ -51,17 +51,17 @@ async function runWrite(args) {
     console.log('❌ 请提供素材内容');
     process.exit(1);
   }
-  
+
   console.log('🤖 AI-Writer 生成中...\n');
-  
+
   const AgentCoordinator = require(path.join(ROOT, 'lib/AgentCoordinator'));
   const QualityChecker = require(path.join(ROOT, 'lib/QualityChecker'));
-  
+
   const coordinator = new AgentCoordinator(CONFIG_PATH, { withImage: params.image });
   const checker = new QualityChecker();
-  
+
   const draft = await coordinator.generateForAccount(params.info, params.source, params.platform, params.image);
-  
+
   // 质量检查
   const quality = checker.check(draft);
   console.log(`📊 质量评分：${quality.score}/100`);
@@ -71,24 +71,24 @@ async function runWrite(args) {
   if (quality.warnings.length > 0) {
     console.log('⚠️ 警告:', quality.warnings.join('; '));
   }
-  
+
   console.log('\n📝 标题:', draft.title);
-  console.log('---\n' + draft.content + '\n---');
+  console.log(`---\n${  draft.content  }\n---`);
   console.log('标签:', draft.tags?.join(' ') || '无');
-  
+
   // 配图信息
   if (draft.image) {
     console.log('\n🎨 配图已生成:');
     console.log('   文件:', draft.image.filename);
     console.log('   路径:', draft.image.path);
   }
-  
+
   // 保存草稿
   const filename = `draft-${Date.now()}.json`;
   draft.quality = quality;
   fs.writeFileSync(path.join(DRAFTS_PATH, filename), JSON.stringify(draft, null, 2));
   console.log(`\n✅ 草稿已保存：${filename}`);
-  
+
   // 自动发布
   if (params.publish) {
     console.log('\n📤 正在发布...');
@@ -100,19 +100,19 @@ async function runMulti(args) {
   const params = parseArgs(args);
   const AgentCoordinator = require(path.join(ROOT, 'lib/AgentCoordinator'));
   const QualityChecker = require(path.join(ROOT, 'lib/QualityChecker'));
-  
+
   const coordinator = new AgentCoordinator(CONFIG_PATH, { withImage: params.image });
   const checker = new QualityChecker();
-  
+
   const accounts = params.accounts?.split(',') || ['stone', 'zhoumo', 'yueyu', 'dayu'];
   const results = await coordinator.generateForAllAccounts(params.source, params.platform, accounts, params.image);
-  
+
   results.forEach(r => {
     console.log(`\n--- ${r.draft?.account || r.account} ---`);
     if (r.success) {
       const quality = checker.quickCheck(r.draft);
       console.log(`质量：${quality.ok ? '✅' : '❌'} ${quality.message}`);
-      console.log(r.draft.content.substring(0, 150) + '...');
+      console.log(`${r.draft.content.substring(0, 150)  }...`);
       if (r.draft.image) {
         console.log(`配图：${r.draft.image.filename}`);
       }
@@ -120,7 +120,7 @@ async function runMulti(args) {
       console.log('❌', r.error);
     }
   });
-  
+
   console.log('\n✅ 四号联动完成');
 }
 
@@ -129,19 +129,19 @@ async function runCheck(args) {
     console.log('❌ 请指定草稿');
     return;
   }
-  
+
   const files = fs.readdirSync(DRAFTS_PATH).filter(f => f.includes(args[0]));
   if (!files.length) {
     console.log('❌ 草稿不存在');
     return;
   }
-  
+
   const QualityChecker = require(path.join(ROOT, 'lib/QualityChecker'));
   const checker = new QualityChecker();
   const draft = JSON.parse(fs.readFileSync(path.join(DRAFTS_PATH, files[0])));
-  
+
   const result = checker.check(draft);
-  console.log(`📊 质量报告\n`);
+  console.log('📊 质量报告\n');
   console.log(`评分：${result.score}/100`);
   console.log(`状态：${result.valid ? '✅ 通过' : '❌ 不通过'}`);
   if (result.issues.length) {
@@ -152,10 +152,10 @@ async function runCheck(args) {
     console.log(`\n⚠️ 警告 (${result.warnings.length}):`);
     result.warnings.forEach(w => console.log(`   - ${w}`));
   }
-  
+
   // 显示配图信息
   if (draft.image) {
-    console.log(`\n🎨 配图:`);
+    console.log('\n🎨 配图:');
     console.log(`   文件：${draft.image.filename}`);
     console.log(`   路径：${draft.image.path}`);
   }
@@ -166,13 +166,13 @@ async function runPublish(args) {
     console.log('❌ 请指定草稿');
     return;
   }
-  
+
   const files = fs.readdirSync(DRAFTS_PATH).filter(f => f.includes(args[0]));
   if (!files.length) {
     console.log('❌ 草稿不存在');
     return;
   }
-  
+
   const draft = JSON.parse(fs.readFileSync(path.join(DRAFTS_PATH, files[0])));
   await doPublish(draft);
 }
@@ -181,13 +181,13 @@ async function runImage(args) {
   const params = parseImageArgs(args);
   const ImageGenerator = require(path.join(ROOT, 'lib/ImageGenerator'));
   const generator = new ImageGenerator();
-  
+
   console.log('🎨 SeedDream 配图生成\n');
-  
+
   try {
     const prompt = params.prompt || generator.buildPrompt(params.title, params.platform, params.style);
     const result = await generator.generate(prompt, params.platform, params.title);
-    
+
     console.log('\n✅ 生成成功！');
     console.log('   文件:', result.filename);
     console.log('   路径:', result.path);
@@ -199,7 +199,7 @@ async function runImage(args) {
 async function doPublish(draft) {
   const PublisherClient = require(path.join(ROOT, 'lib/PublisherClient'));
   const client = new PublisherClient();
-  
+
   // 检查连接
   const conn = await client.checkConnection();
   if (!conn.connected) {
@@ -207,7 +207,7 @@ async function doPublish(draft) {
     console.log('   请先启动：cd AI-Publisher && npm start');
     return;
   }
-  
+
   try {
     const result = await client.publish(draft);
     console.log('✅ 发布成功');
@@ -222,10 +222,10 @@ async function runConfig() {
   console.log('🔧 AI-Writer 配置向导\n');
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   const q = p => new Promise(r => rl.question(p, r));
-  
+
   console.log('选择 LLM Provider:\n1. Ollama（本地免费）\n2. OpenAI\n3. Claude\n4. 智谱 GLM\n5. DeepSeek\n8. 跳过');
   const choice = await q('\n请选择 [1-8]: ');
-  
+
   const providers = {
     '1': { name: 'ollama', env: null },
     '2': { name: 'openai', env: 'OPENAI_API_KEY' },
@@ -233,12 +233,12 @@ async function runConfig() {
     '4': { name: 'zhipu', env: 'ZHIPU_API_KEY' },
     '5': { name: 'deepseek', env: 'DEEPSEEK_API_KEY' }
   };
-  
+
   if (choice === '8') { console.log('✅ 使用自动检测'); rl.close(); return; }
-  
+
   const p = providers[choice];
   if (!p) { console.log('❌ 无效'); rl.close(); return; }
-  
+
   if (p.env) {
     const key = await q(`请输入 ${p.env}: `);
     fs.appendFileSync(path.join(ROOT, '.env'), `${p.env}=${key}\n`);
@@ -246,7 +246,7 @@ async function runConfig() {
   } else {
     console.log('✅ Ollama 无需配置');
   }
-  
+
   // SeedDream 配置
   console.log('\n🎨 配置 SeedDream 配图生成:');
   const useSeedDream = await q('是否启用 SeedDream 配图？[y/N]: ');
@@ -259,7 +259,7 @@ async function runConfig() {
     }
     console.log('✅ SeedDream 配置完成');
   }
-  
+
   rl.close();
 }
 
@@ -318,7 +318,7 @@ async function runDraft(args) {
     console.log(`\n📊 版本对比: v${args[2]} vs v${args[3]}\n`);
     console.log(`v${args[2]}: ${diff.version1.title} (${diff.version1.createdAt})`);
     console.log(`v${args[3]}: ${diff.version2.title} (${diff.version2.createdAt})`);
-    console.log(`\n差异:`);
+    console.log('\n差异:');
     if (diff.differences.title.changed) {
       console.log(`  标题: "${diff.differences.title.old}" → "${diff.differences.title.new}"`);
     }
@@ -371,9 +371,9 @@ async function runReview(args) {
     if (!args[1]) return console.log('❌ 请指定草稿 ID');
     const reviewer = args.indexOf('--reviewer') > -1 ? args[args.indexOf('--reviewer') + 1] : null;
     const message = args.indexOf('-m') > -1 ? args[args.indexOf('-m') + 1] : '';
-    console.log(`📤 提交审核...`);
+    console.log('📤 提交审核...');
     const review = dm.submitForReview(args[1], { reviewer, message });
-    console.log(`✅ 已提交审核`);
+    console.log('✅ 已提交审核');
     console.log(`   审核ID: ${review.id}`);
     if (reviewer) console.log(`   审核人: ${reviewer}`);
   } else if (cmd === 'list' || cmd === 'pending') {
@@ -392,31 +392,31 @@ async function runReview(args) {
     if (!args[1]) return console.log('❌ 请指定草稿 ID');
     const message = args.indexOf('-m') > -1 ? args[args.indexOf('-m') + 1] : '审核通过';
     const reviewedBy = args.indexOf('--by') > -1 ? args[args.indexOf('--by') + 1] : 'reviewer';
-    console.log(`✅ 批准审核...`);
+    console.log('✅ 批准审核...');
     dm.approveReview(args[1], { reviewedBy, message });
-    console.log(`✅ 审核已通过`);
+    console.log('✅ 审核已通过');
   } else if (cmd === 'reject') {
     if (!args[1]) return console.log('❌ 请指定草稿 ID');
     const reason = args.indexOf('-r') > -1 ? args[args.indexOf('-r') + 1] : '';
     if (!reason) return console.log('❌ 请提供拒绝原因: -r "原因"');
     const reviewedBy = args.indexOf('--by') > -1 ? args[args.indexOf('--by') + 1] : 'reviewer';
     const suggestions = args.indexOf('-s') > -1 ? args[args.indexOf('-s') + 1] : '';
-    console.log(`❌ 拒绝审核...`);
+    console.log('❌ 拒绝审核...');
     dm.rejectReview(args[1], { reviewedBy, reason, suggestions });
     console.log(`❌ 审核已拒绝: ${reason}`);
   } else if (cmd === 'changes') {
     if (!args[1]) return console.log('❌ 请指定草稿 ID');
     const message = args.indexOf('-m') > -1 ? args[args.indexOf('-m') + 1] : '请修改';
     const requestedBy = args.indexOf('--by') > -1 ? args[args.indexOf('--by') + 1] : 'reviewer';
-    console.log(`📝 请求修改...`);
+    console.log('📝 请求修改...');
     dm.requestChanges(args[1], { requestedBy, message });
     console.log(`📝 已请求修改: ${message}`);
   } else if (cmd === 'resubmit') {
     if (!args[1]) return console.log('❌ 请指定草稿 ID');
     const message = args.indexOf('-m') > -1 ? args[args.indexOf('-m') + 1] : '修改后重新提交';
-    console.log(`📤 重新提交...`);
+    console.log('📤 重新提交...');
     dm.resubmitForReview(args[1], { message });
-    console.log(`✅ 已重新提交审核`);
+    console.log('✅ 已重新提交审核');
   } else if (cmd === 'status') {
     if (!args[1]) return console.log('❌ 请指定草稿 ID');
     const review = dm.getReviewStatus(args[1]);
@@ -429,7 +429,7 @@ async function runReview(args) {
     if (review.rejectionReason) console.log(`   拒绝原因: ${review.rejectionReason}`);
   } else if (cmd === 'stats') {
     const stats = dm.reviewManager.getStats();
-    console.log(`📊 审核统计:\n`);
+    console.log('📊 审核统计:\n');
     console.log(`   总计: ${stats.total}`);
     console.log(`   待审核: ${stats.pending}`);
     console.log(`   已通过: ${stats.approved}`);
@@ -449,11 +449,11 @@ async function runReview(args) {
 }
 
 function parseArgs(args) {
-  const p = { 
-    source: '', 
-    platform: 'xiaohongshu', 
-    info: 'stone', 
-    accounts: null, 
+  const p = {
+    source: '',
+    platform: 'xiaohongshu',
+    info: 'stone',
+    accounts: null,
     publish: false,
     image: false,
     checkFeedback: false,
@@ -473,9 +473,9 @@ function parseArgs(args) {
 }
 
 function parseImageArgs(args) {
-  const p = { 
+  const p = {
     title: 'cover',
-    platform: 'xiaohongshu', 
+    platform: 'xiaohongshu',
     style: 'modern minimalist',
     prompt: null
   };
@@ -492,9 +492,9 @@ function parseImageArgs(args) {
 async function runFeedback(args) {
   const FeedbackManager = require(path.join(ROOT, 'lib/FeedbackManager'));
   const feedbackManager = new FeedbackManager(ROOT);
-  
+
   const command = args[0];
-  
+
   if (!command) {
     console.log(`
 AI-Writer Feedback 系统
@@ -511,7 +511,7 @@ AI-Writer Feedback 系统
 `);
     return;
   }
-  
+
   // 解析参数
   const options = {};
   for (let i = 1; i < args.length; i++) {
@@ -521,7 +521,7 @@ AI-Writer Feedback 系统
       options[key] = value;
     }
   }
-  
+
   if (command === 'add') {
     const feedback = feedbackManager.addFeedback({
       draft: options.draft || '',
@@ -530,24 +530,24 @@ AI-Writer Feedback 系统
       type: options.type || '',
       account: options.account || ''
     });
-    
+
     console.log('✅ 反馈已记录');
     console.log(`   ID: ${feedback.id}`);
     console.log(`   分类：${feedback.category}`);
     console.log(`   问题：${feedback.problem}`);
     console.log(`   建议：${feedback.suggestion}`);
-    
+
   } else if (command === 'list') {
     const days = parseInt(options.days) || 7;
     const feedbacks = feedbackManager.listFeedback(days);
-    
+
     console.log(`\n📋 最近${days}天的反馈 (${feedbacks.length}条)\n`);
-    
+
     if (feedbacks.length === 0) {
       console.log('   暂无反馈');
       return;
     }
-    
+
     feedbacks.forEach((fb, index) => {
       console.log(`${index + 1}. [${fb.date}] ${fb.type || '未指定'} / ${fb.account || '未指定'}`);
       console.log(`   问题：${fb.problem}`);
@@ -555,15 +555,15 @@ AI-Writer Feedback 系统
       console.log(`   分类：${fb.category} | 状态：${fb.status}`);
       console.log('');
     });
-    
+
   } else if (command === 'analyze') {
     const days = parseInt(options.days) || 30;
     const analysis = feedbackManager.analyzeFeedback(days);
-    
+
     console.log(`\n📊 反馈分析报告 (最近${days}天)\n`);
     console.log(`总反馈数：${analysis.totalFeedbacks}`);
     console.log(`提炼规则：${analysis.rules.length}条\n`);
-    
+
     if (analysis.rules.length > 0) {
       console.log('📝 提炼的规则:');
       analysis.rules.forEach((rule, index) => {
@@ -572,12 +572,12 @@ AI-Writer Feedback 系统
         console.log(`   最近发现：${rule.lastSeen}`);
       });
     }
-    
+
     console.log('\n📋 分类统计:');
     for (const [category, stats] of Object.entries(analysis.categoryStats)) {
       console.log(`   ${category}: ${stats.count}次`);
     }
-    
+
   } else {
     console.log(`未知命令：${command}`);
     console.log('使用 aiwriter feedback 查看用法');

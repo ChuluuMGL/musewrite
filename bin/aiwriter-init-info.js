@@ -107,8 +107,8 @@ async function initInfoCard() {
 
   fs.writeFileSync(filepath, finalContent);
   console.log(`\n✅ 信息卡已创建：config/info-cards/${filename}`);
-  console.log(`\n📖 下一步：`);
-  console.log(`   1. 编辑文件完善详细信息`);
+  console.log('\n📖 下一步：');
+  console.log('   1. 编辑文件完善详细信息');
   console.log(`   2. 使用命令生成内容：aiwriter "素材" --info ${accountName.toLowerCase()}`);
 
   rl.close();

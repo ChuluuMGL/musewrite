@@ -9,9 +9,9 @@ async function test() {
   console.log('║          AI-Writer 重试机制测试                         ║');
   console.log('╚════════════════════════════════════════════════════════╝');
   console.log('');
-  
+
   const retry = new RetryMiddleware({ maxRetries: 3, baseDelay: 500 });
-  
+
   // 测试 1: 成功操作（无需重试）
   console.log('1️⃣  测试成功操作...');
   let callCount = 0;
@@ -19,10 +19,10 @@ async function test() {
     callCount++;
     return Promise.resolve('success');
   }, { name: '成功测试' });
-  
+
   console.log(`   结果：${result}`);
   console.log(`   调用次数：${callCount}\n`);
-  
+
   // 测试 2: 失败后成功（需要重试）
   console.log('2️⃣  测试失败后成功...');
   callCount = 0;
@@ -35,10 +35,10 @@ async function test() {
     }
     return Promise.resolve('success after retry');
   }, { name: '重试测试' });
-  
+
   console.log(`   结果：${result2}`);
   console.log(`   调用次数：${callCount}\n`);
-  
+
   // 测试 3: 持续失败（达到最大重试）
   console.log('3️⃣  测试持续失败...');
   callCount = 0;
@@ -53,7 +53,7 @@ async function test() {
     console.log(`   最终错误：${error.message}`);
     console.log(`   调用次数：${callCount}`);
   }
-  
+
   console.log('\n✅ 重试机制测试完成\n');
 }
 

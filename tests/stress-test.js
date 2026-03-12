@@ -1,6 +1,6 @@
 /**
  * AI-Writer 压力测试
- * 
+ *
  * 测试高并发场景
  */
 
@@ -22,7 +22,7 @@ const results = [];
 // 并发测试
 async function runConcurrencyTest(concurrency) {
   console.log(`\n📊 并发数：${concurrency}`);
-  
+
   const startTime = Date.now();
   const promises = [];
   const results = {
@@ -32,7 +32,7 @@ async function runConcurrencyTest(concurrency) {
     durations: [],
     errors: []
   };
-  
+
   for (let i = 0; i < CONFIG.requestsPerTest; i++) {
     const promise = (async () => {
       const reqStart = Date.now();
@@ -50,10 +50,10 @@ async function runConcurrencyTest(concurrency) {
           }),
           signal: AbortSignal.timeout(CONFIG.timeout)
         });
-        
+
         const data = await res.json();
         const duration = Date.now() - reqStart;
-        
+
         if (data.success) {
           results.success++;
           results.durations.push(duration);
@@ -66,30 +66,30 @@ async function runConcurrencyTest(concurrency) {
         results.errors.push(error.message);
       }
     })();
-    
+
     promises.push(promise);
-    
+
     // 控制并发
     if ((i + 1) % concurrency === 0) {
       await Promise.all(promises.slice(-concurrency));
     }
   }
-  
+
   await Promise.all(promises);
-  
+
   const totalTime = Date.now() - startTime;
-  const avgDuration = results.durations.length > 0 
+  const avgDuration = results.durations.length > 0
     ? Math.round(results.durations.reduce((a, b) => a + b, 0) / results.durations.length)
     : 0;
   const qps = (results.success / totalTime * 1000).toFixed(2);
-  
+
   console.log(`   总请求：${results.total}`);
   console.log(`   ✅ 成功：${results.success}`);
   console.log(`   ❌ 失败：${results.failed}`);
   console.log(`   平均耗时：${avgDuration}ms`);
   console.log(`   QPS: ${qps}`);
   console.log(`   总耗时：${totalTime}ms`);
-  
+
   return {
     concurrency,
     total: results.total,
@@ -106,12 +106,12 @@ async function main() {
   console.log('╔════════════════════════════════════════════════════════╗');
   console.log('║          AI-Writer 压力测试                             ║');
   console.log('╚════════════════════════════════════════════════════════╝');
-  
+
   for (const concurrency of CONFIG.concurrency) {
     const result = await runConcurrencyTest(concurrency);
     results.push(result);
   }
-  
+
   // 输出总结
   console.log('\n═══════════════════════════════════════════════════════');
   console.log('📊 压力测试总结');
@@ -119,15 +119,15 @@ async function main() {
   console.log('并发数 | 成功 | 失败 | 平均耗时 | QPS');
   console.log('──────┼──────┼──────┼──────────┼──────');
   results.forEach(r => {
-    console.log(`${String(r.concurrency).padEnd(6)} | ${String(r.success).padEnd(4)} | ${String(r.failed).padEnd(4)} | ${String(r.avgDuration + 'ms').padEnd(8)} | ${r.qps}`);
+    console.log(`${String(r.concurrency).padEnd(6)} | ${String(r.success).padEnd(4)} | ${String(r.failed).padEnd(4)} | ${String(`${r.avgDuration  }ms`).padEnd(8)} | ${r.qps}`);
   });
   console.log('═══════════════════════════════════════════════════════');
-  
+
   // 建议
   const bestQps = results.reduce((max, r) => r.qps > max ? r.qps : max, 0);
   const bestConcurrency = results.find(r => r.qps === bestQps)?.concurrency;
-  
-  console.log(`\n💡 建议:`);
+
+  console.log('\n💡 建议:');
   console.log(`   最佳并发数：${bestConcurrency}`);
   console.log(`   最高 QPS: ${bestQps}`);
   console.log(`   建议限流阈值：${Math.round(bestQps * 0.8)} 请求/秒`);

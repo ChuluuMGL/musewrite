@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * AI-Writer 配置管理工具
- * 
+ *
  * 用法:
  *   aiwriter config check     - 检查信息卡完整度
  *   aiwriter config profile   - 交互式信息收集
@@ -77,14 +77,14 @@ const PROFILE_QUESTIONS = [
 // 检查信息卡完整度
 function checkInfoCard(account = 'stone') {
   const infoCardPath = path.join(INFO_CARDS_PATH, `${account}-info.md`);
-  
+
   if (!fs.existsSync(infoCardPath)) {
     console.log(`❌ 信息卡不存在：${infoCardPath}`);
     return null;
   }
-  
+
   const content = fs.readFileSync(infoCardPath, 'utf-8');
-  
+
   // 检查各项完整性
   const checks = {
     '基本信息': content.includes('基本信息') && content.includes('账号名'),
@@ -96,28 +96,28 @@ function checkInfoCard(account = 'stone') {
     '口头禅': content.includes('口头禅') || content.includes('Slogan'),
     '内容禁忌': content.includes('禁忌') || content.includes('不写') || content.includes('避免')
   };
-  
+
   const completeCount = Object.values(checks).filter(v => v).length;
   const completeness = Math.round((completeCount / Object.keys(checks).length) * 100);
-  
+
   return { checks, completeness, path: infoCardPath };
 }
 
 // 显示检查结果
 function showCheckResult(result) {
   if (!result) return;
-  
+
   console.log('\n📊 信息卡完整度检查\n');
   console.log(`文件：${result.path}\n`);
-  
+
   for (const [item, complete] of Object.entries(result.checks)) {
     const icon = complete ? '✅' : '⚠️ ';
     const status = complete ? '完整' : '缺失';
     console.log(`${icon} ${item}: ${status}`);
   }
-  
+
   console.log(`\n完整度：${result.completeness}%`);
-  
+
   if (result.completeness < 60) {
     console.log('\n⚠️  建议运行 aiwriter config profile 补充信息');
   }
@@ -128,24 +128,24 @@ async function collectProfile(account = 'stone') {
   console.log('\n📝 AI-Writer 个人信息收集\n');
   console.log('你好！为了生成更有个人特色的内容，我需要了解一些你的信息。\n');
   console.log('（直接回车跳过，输入 q 退出）\n');
-  
+
   const answers = {};
-  
+
   for (let i = 0; i < PROFILE_QUESTIONS.length; i++) {
     const q = PROFILE_QUESTIONS[i];
     const answer = await askQuestion(`问题 ${i + 1}/${PROFILE_QUESTIONS.length}：${q.question}\n提示：${q.hint}\n> `);
-    
+
     if (answer === 'q') break;
     if (answer.trim()) {
       answers[q.key] = answer.trim();
     }
   }
-  
+
   if (Object.keys(answers).length > 0) {
     await saveProfile(account, answers);
     console.log(`\n✅ 已保存 ${Object.keys(answers).length} 条信息到 ${account}-info.md`);
   }
-  
+
   rl.close();
 }
 
@@ -161,14 +161,14 @@ function askQuestion(question) {
 // 保存信息到信息卡
 async function saveProfile(account, answers) {
   const infoCardPath = path.join(INFO_CARDS_PATH, `${account}-info.md`);
-  
+
   let content = '';
   if (fs.existsSync(infoCardPath)) {
     content = fs.readFileSync(infoCardPath, 'utf-8');
   } else {
     content = `# 信息卡 - ${account}\n\n`;
   }
-  
+
   // 添加或更新个人信息部分
   const personalSection = `
 ## 个人信息（AI-Writer 收集）
@@ -176,13 +176,13 @@ async function saveProfile(account, answers) {
 ${Object.entries(answers).map(([key, value]) => `- **${key}**: ${value}`).join('\n')}
 
 `;
-  
+
   if (content.includes('## 个人信息')) {
     content = content.replace(/## 个人信息.*?(?=##|$)/s, personalSection);
   } else {
     content += personalSection;
   }
-  
+
   fs.writeFileSync(infoCardPath, content);
 }
 
@@ -191,19 +191,19 @@ async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
   const account = args[1] || 'stone';
-  
+
   switch (command) {
-    case 'check':
-      const result = checkInfoCard(account);
-      showCheckResult(result);
-      break;
-    
-    case 'profile':
-      await collectProfile(account);
-      break;
-    
-    default:
-      console.log(`
+  case 'check':
+    const result = checkInfoCard(account);
+    showCheckResult(result);
+    break;
+
+  case 'profile':
+    await collectProfile(account);
+    break;
+
+  default:
+    console.log(`
 AI-Writer 配置管理
 
 用法:

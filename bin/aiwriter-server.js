@@ -86,55 +86,55 @@ async function handleGenerate(body, taskId = null) {
   // 输入验证
   const errors = validateGenerateInput(body);
   if (errors.length > 0) {
-    const error = new Error('输入验证失败: ' + errors.join('; '));
+    const error = new Error(`输入验证失败: ${  errors.join('; ')}`);
     error.code = 'VALIDATION_ERROR';
     throw error;
   }
 
   if (taskId) { taskQueue.startTask(taskId); taskQueue.updateProgress(taskId, 10, 'Starting...'); }
-  
+
   const AgentCoordinator = require(path.join(ROOT, 'lib/AgentCoordinator'));
   const QualityChecker = require(path.join(ROOT, 'lib/QualityChecker'));
-  
+
   let checklist = [];
   if (checkFeedback) checklist = feedbackManager.getChecklist(platform || 'xiaohongshu', info || 'stone');
-  
+
   const coordinator = new AgentCoordinator(path.join(ROOT, 'config'), { withImage: image });
   const checker = new QualityChecker();
-  
+
   const draft = await coordinator.generateForAccount(info || 'stone', source, platform || 'xiaohongshu', image);
   const quality = checker.check(draft);
-  
+
   const filename = `draft-${Date.now()}.json`;
   draft.quality = { ...quality, feedbackChecklist: checklist };
   fs.writeFileSync(path.join(DRAFTS_PATH, filename), JSON.stringify(draft, null, 2));
-  
+
   if (taskId) {
     taskQueue.updateProgress(taskId, 100, 'Completed');
     taskQueue.completeTask(taskId, { draft: { title: draft.title, content: draft.content, tags: draft.tags }, quality: { score: quality.score }, filename });
   }
-  
+
   return { success: true, draft: { title: draft.title, content: draft.content, tags: draft.tags, platform: draft.platform, account: draft.account }, quality: { score: quality.score, issues: quality.issues, warnings: quality.warnings, feedbackChecklist: checklist }, image: draft.image ? { filename: draft.image.filename, path: draft.image.path } : null, filename };
 }
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${port}`);
   const pathname = url.pathname;
-  
+
   logger.middleware(req, res);
   requestId.middleware(req, res);
-  
+
   if (pathname !== '/api/v1/status' && !auth.validateRequest(req, res)) return;
   if (pathname !== '/api/v1/status' && !rateLimiter.middleware(req, res)) return;
-  
+
   if (req.method === 'POST' && req.isDuplicate) {
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ success: true, duplicate: true, originalRequestId: req.requestId, result: req.originalResponse }));
     return;
   }
-  
+
   res.setHeader('Content-Type', 'application/json');
-  
+
   try {
     // ==================== 健康检查端点 ====================
     if (pathname === '/health' && req.method === 'GET') {
@@ -165,7 +165,7 @@ const server = http.createServer(async (req, res) => {
       try {
         fs.accessSync(DRAFTS_PATH, fs.constants.R_OK | fs.constants.W_OK);
       } catch (e) {
-        health.checks.drafts = 'error: ' + e.message;
+        health.checks.drafts = `error: ${  e.message}`;
         health.status = 'degraded';
       }
 
@@ -174,7 +174,7 @@ const server = http.createServer(async (req, res) => {
         const taskCount = Object.keys(taskQueue.tasks || {}).length;
         health.checks.tasks = `ok (${taskCount} tasks)`;
       } catch (e) {
-        health.checks.tasks = 'error: ' + e.message;
+        health.checks.tasks = `error: ${  e.message}`;
         health.status = 'degraded';
       }
 
@@ -250,7 +250,7 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200);
       res.end(JSON.stringify({ success: true, keys: auth.listKeys() }));
     }
-    
+
     else if (pathname === '/api/v1/publish' && req.method === 'POST') {
       const body = await readBody(req);
       const record = publishTracker.recordPublish(body.draftId, body.platform, body.url, body.metadata);
@@ -394,15 +394,15 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(port, () => {
-  console.log(`\n╔════════════════════════════════════════════════════════╗`);
-  console.log(`║           MuseWrite API Server v1.0.0                  ║`);
-  console.log(`║           灵感驱动，智能写作                              ║`);
-  console.log(`╠════════════════════════════════════════════════════════╣`);
+  console.log('\n╔════════════════════════════════════════════════════════╗');
+  console.log('║           MuseWrite API Server v1.0.0                  ║');
+  console.log('║           灵感驱动，智能写作                              ║');
+  console.log('╠════════════════════════════════════════════════════════╣');
   console.log(`║  URL: http://localhost:${port}                            ║`);
-  console.log(`║  认证：API Key (X-API-Key)                              ║`);
-  console.log(`║  限流：60 次/分钟，1000 次/小时                            ║`);
-  console.log(`║  幂等：X-Request-ID 头                                  ║`);
-  console.log(`╚════════════════════════════════════════════════════════╝\n`);
+  console.log('║  认证：API Key (X-API-Key)                              ║');
+  console.log('║  限流：60 次/分钟，1000 次/小时                            ║');
+  console.log('║  幂等：X-Request-ID 头                                  ║');
+  console.log('╚════════════════════════════════════════════════════════╝\n');
 });
 
 // ==================== 优雅关闭 ====================

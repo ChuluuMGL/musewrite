@@ -3,16 +3,16 @@ const path = require('path');
 
 function generateTestImages() {
   const outputDir = path.join(process.env.HOME, 'Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian Vault/35-Note_笔记/03-Assets_素材/covers/2026-03-03');
-  
+
   // 确保目录存在
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
     console.log('创建目录:', outputDir);
   }
-  
+
   // === 小红书风格 (3:4 = 1800x2400) ===
   console.log('生成小红书风格测试图...');
-  
+
   // 小红书 - 渐变紫
   const xhs1 = `<svg width="1800" height="2400" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -27,7 +27,7 @@ function generateTestImages() {
     <text x="50%" y="60%" text-anchor="middle" fill="white" font-family="Arial" font-size="28" opacity="0.9">2026-03-03</text>
   </svg>`;
   fs.writeFileSync(path.join(outputDir, 'xhs-gradient-purple.svg'), xhs1);
-  
+
   // 小红书 - 粉色渐变
   const xhs2 = `<svg width="1800" height="2400" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -42,7 +42,7 @@ function generateTestImages() {
     <text x="50%" y="60%" text-anchor="middle" fill="#333" font-family="Arial" font-size="28" opacity="0.8">2026-03-03</text>
   </svg>`;
   fs.writeFileSync(path.join(outputDir, 'xhs-pink.svg'), xhs2);
-  
+
   // 小红书 - 蓝色渐变
   const xhs3 = `<svg width="1800" height="2400" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -57,12 +57,12 @@ function generateTestImages() {
     <text x="50%" y="60%" text-anchor="middle" fill="white" font-family="Arial" font-size="28" opacity="0.9">2026-03-03</text>
   </svg>`;
   fs.writeFileSync(path.join(outputDir, 'xhs-blue.svg'), xhs3);
-  
+
   console.log('✅ 小红书风格 3 张已生成');
-  
+
   // === WordPress 风格 (16:9 = 1920x1080) ===
   console.log('生成 WordPress 风格测试图...');
-  
+
   // WordPress - 深蓝渐变
   const wp1 = `<svg width="1920" height="1080" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -77,7 +77,7 @@ function generateTestImages() {
     <text x="50%" y="62%" text-anchor="middle" fill="white" font-family="Arial" font-size="26" opacity="0.8">2026-03-03</text>
   </svg>`;
   fs.writeFileSync(path.join(outputDir, 'wp-darkblue.svg'), wp1);
-  
+
   // WordPress - 绿色渐变
   const wp2 = `<svg width="1920" height="1080" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -92,7 +92,7 @@ function generateTestImages() {
     <text x="50%" y="62%" text-anchor="middle" fill="white" font-family="Arial" font-size="26" opacity="0.8">2026-03-03</text>
   </svg>`;
   fs.writeFileSync(path.join(outputDir, 'wp-green.svg'), wp2);
-  
+
   // WordPress - 橙色渐变
   const wp3 = `<svg width="1920" height="1080" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -107,9 +107,9 @@ function generateTestImages() {
     <text x="50%" y="62%" text-anchor="middle" fill="white" font-family="Arial" font-size="26" opacity="0.8">2026-03-03</text>
   </svg>`;
   fs.writeFileSync(path.join(outputDir, 'wp-orange.svg'), wp3);
-  
+
   console.log('✅ WordPress 风格 3 张已生成');
-  
+
   console.log('\n🎉 所有测试图已生成到:', outputDir);
   console.log('\n小红书风格 (1800x2400, 3:4):');
   console.log('  - xhs-gradient-purple.svg (渐变紫)');

@@ -73,7 +73,7 @@ const testCases = [
 // 生成内容
 async function generate(params) {
   const startTime = Date.now();
-  
+
   try {
     const res = await fetch(`${BASE_URL}/api/v1/generate`, {
       method: 'POST',
@@ -87,10 +87,10 @@ async function generate(params) {
         checkFeedback: true
       })
     });
-    
+
     const data = await res.json();
     const duration = Date.now() - startTime;
-    
+
     if (data.success) {
       return {
         success: true,
@@ -118,13 +118,13 @@ async function generate(params) {
 // 运行测试
 async function runTests() {
   console.log('🧪 开始实际使用测试...\n');
-  
+
   for (const testCase of testCases) {
     results.total++;
     console.log(`\n📝 测试：${testCase.name}`);
-    
+
     const result = await generate(testCase.params);
-    
+
     if (result.success) {
       results.success++;
       results.avgScore += result.score;
@@ -141,13 +141,13 @@ async function runTests() {
       console.log(`   ❌ 失败：${result.error}`);
     }
   }
-  
+
   // 计算平均值
   if (results.success > 0) {
     results.avgScore = (results.avgScore / results.success).toFixed(1);
     results.avgDuration = Math.round(results.avgDuration / results.success);
   }
-  
+
   // 输出报告
   console.log('\n═══════════════════════════════════════════════════════');
   console.log('📊 测试报告');
@@ -157,14 +157,14 @@ async function runTests() {
   console.log(`❌ 失败：${results.failed}`);
   console.log(`平均质量：${results.avgScore}分`);
   console.log(`平均耗时：${results.avgDuration}ms`);
-  
+
   if (results.errors.length > 0) {
     console.log('\n❌ 错误详情:');
     results.errors.forEach(e => {
       console.log(`   - ${e.test}: ${e.error}`);
     });
   }
-  
+
   // 保存报告
   const reportPath = path.join(__dirname, 'real-usage-report.json');
   fs.writeFileSync(reportPath, JSON.stringify(results, null, 2));
