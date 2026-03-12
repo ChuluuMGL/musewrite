@@ -823,69 +823,131 @@ function App() {
 
   // ==================== HOME PAGE ====================
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex">
-      {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-0'} border-r border-gray-100 dark:border-gray-800 transition-all duration-300 overflow-hidden flex-shrink-0`}>
-        <div className="p-6 space-y-8">
-          {/* Persona */}
-          <div>
-            <div className="text-sm text-gray-400 uppercase tracking-wider mb-3">当前人设</div>
-            <button className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-              <span className="text-lg font-medium">{selectedPersona.name}</span>
-              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    <div className="min-h-screen bg-white dark:bg-[#0A0A0A] flex relative overflow-hidden">
+      {/* Sidebar - Apple Notes Style */}
+      <aside
+        className={`
+          absolute left-0 top-0 bottom-0 z-20
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]
+        `}
+      >
+        <div className="h-full w-72 bg-[#F5F5F7] dark:bg-[#1C1C1E] flex flex-col">
+          {/* Sidebar Header */}
+          <div className="h-16 flex items-center justify-between px-5 border-b border-black/5 dark:border-white/5">
+            <span className="text-lg font-semibold">MuseWrite</span>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-black/5 dark:hover:bg-white/5"
+            >
+              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
           </div>
 
-          {/* Style */}
-          <div>
-            <div className="text-sm text-gray-400 uppercase tracking-wider mb-3">当前风格</div>
-            <button className="w-full flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-              <span className="text-lg font-medium">{selectedStyle.name}</span>
-              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+          {/* Sidebar Content */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            {/* Persona */}
+            <div>
+              <div className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2 px-2">人设</div>
+              <button className="w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-[#2C2C2E] rounded-xl shadow-sm hover:shadow transition-all">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-sm font-medium">
+                    {selectedPersona.name[0]}
+                  </div>
+                  <span className="text-base font-medium">{selectedPersona.name}</span>
+                </div>
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Style */}
+            <div>
+              <div className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2 px-2">风格</div>
+              <button className="w-full flex items-center justify-between px-4 py-3 bg-white dark:bg-[#2C2C2E] rounded-xl shadow-sm hover:shadow transition-all">
+                <span className="text-base font-medium">{selectedStyle.name}</span>
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Divider */}
+            <div className="h-px bg-black/5 dark:bg-white/5" />
+
+            {/* Options */}
+            <div>
+              <div className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2 px-2">选项</div>
+              <label className="flex items-center justify-between px-4 py-3 bg-white dark:bg-[#2C2C2E] rounded-xl shadow-sm cursor-pointer">
+                <span className="text-base">生成配图</span>
+                <div className={`w-11 h-6 rounded-full transition-colors ${withImage ? 'bg-black dark:bg-white' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                  <div className={`w-5 h-5 rounded-full bg-white dark:bg-black shadow transition-transform ${withImage ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </div>
+              </label>
+            </div>
           </div>
 
-          {/* Image Toggle */}
-          <div>
-            <div className="text-sm text-gray-400 uppercase tracking-wider mb-3">选项</div>
-            <label className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl cursor-pointer">
-              <input
-                type="checkbox"
-                checked={withImage}
-                onChange={(e) => setWithImage(e.target.checked)}
-                className="w-5 h-5 rounded"
-              />
-              <span className="text-lg">生成配图</span>
-            </label>
+          {/* Sidebar Footer */}
+          <div className="p-4 border-t border-black/5 dark:border-white/5">
+            <button
+              onClick={() => goTo('settings')}
+              className="w-full flex items-center gap-3 px-4 py-3 text-gray-500 hover:text-gray-900 dark:hover:text-white rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span className="text-base">设置</span>
+            </button>
           </div>
         </div>
       </aside>
 
-      {/* Main */}
-      <main className="flex-1 flex flex-col">
+      {/* Sidebar Toggle Handle - Apple Style */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className={`
+          absolute left-0 top-0 bottom-0 z-10 w-1
+          hover:w-2 transition-all duration-200
+          ${sidebarOpen ? 'bg-transparent' : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10'}
+        `}
+      />
+
+      {/* Sidebar Overlay for Mobile */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/20 z-10 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Main Content */}
+      <main className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen ? 'md:ml-72' : ''}`}>
         {/* Header */}
-        <header className="h-16 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-8">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-gray-400 hover:text-gray-900 dark:hover:text-white"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          <div className="flex items-center gap-6">
-            <span className="text-gray-400">{selectedPersona.name} · {selectedStyle.name}</span>
-            <button onClick={() => goTo('settings')} className="text-gray-400 hover:text-gray-900 dark:hover:text-white">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <header className="h-16 flex items-center justify-between px-8 border-b border-gray-100 dark:border-gray-800">
+          {/* Toggle Button (when sidebar closed) */}
+          {!sidebarOpen && (
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="flex items-center gap-2 text-gray-500 hover:text-gray-900 dark:hover:text-white"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
+          )}
+          <div className={!sidebarOpen ? '' : 'flex-1'} />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md">{selectedPersona.name}</span>
+              <span>·</span>
+              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md">{selectedStyle.name}</span>
+            </div>
           </div>
+          <div className="w-10" />
         </header>
 
         {/* Content */}
@@ -900,13 +962,13 @@ function App() {
 
             {/* Quick Select */}
             <div className="flex items-center justify-center gap-4">
-              <button className="px-6 py-3 text-lg border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800">
+              <button className="px-6 py-3 text-base border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800">
                 {selectedPersona.name}
               </button>
-              <button className="px-6 py-3 text-lg border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800">
+              <button className="px-6 py-3 text-base border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800">
                 {selectedStyle.name}
               </button>
-              <label className="flex items-center gap-2 px-6 py-3 text-lg border border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
+              <label className="flex items-center gap-2 px-6 py-3 text-base border border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800">
                 <input
                   type="checkbox"
                   checked={withImage}
