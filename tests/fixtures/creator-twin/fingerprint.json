@@ -1,0 +1,88 @@
+{
+  "version": "1.0",
+  "personaId": "integration-1773393435735",
+  "createdAt": "2026-03-13T09:17:15.736Z",
+  "lastAnalyzed": "2026-03-13T09:17:15.736Z",
+  "language": {
+    "sentenceLength": {
+      "avg": 0,
+      "distribution": [],
+      "style": "unknown"
+    },
+    "vocabulary": {
+      "unique": 0,
+      "diversity": 0,
+      "frequency": {}
+    },
+    "emojiUsage": {
+      "density": 0,
+      "favorites": [],
+      "distribution": {}
+    },
+    "punctuation": {
+      "exclamation": 0,
+      "question": 0,
+      "period": 0
+    },
+    "chinesePatterns": {
+      "formalWords": 0,
+      "colloquialisms": 0,
+      "internetSlang": 0
+    }
+  },
+  "structure": {
+    "paragraphStyle": "unknown",
+    "avgParagraphLength": 0,
+    "listUsage": 0,
+    "headingStyle": "unknown",
+    "hookStyle": "unknown",
+    "endingStyle": "unknown",
+    "sectionCount": {
+      "avg": 0,
+      "variance": 0
+    }
+  },
+  "emotion": {
+    "tone": "unknown",
+    "formality": 0.5,
+    "enthusiasm": 0.5,
+    "empathy": 0.5,
+    "sentimentScore": 0
+  },
+  "signature": {
+    "phrases": [],
+    "avoidedWords": [],
+    "sentenceStarters": [],
+    "sentenceEnders": [],
+    "transitionWords": []
+  },
+  "platform": {
+    "xiaohongshu": {
+      "emojiDensity": 0,
+      "paragraphs": "unknown"
+    },
+    "wechat": {
+      "emojiDensity": 0,
+      "paragraphs": "unknown"
+    },
+    "zhihu": {
+      "emojiDensity": 0,
+      "paragraphs": "unknown"
+    },
+    "default": {
+      "emojiDensity": 0,
+      "paragraphs": "unknown"
+    }
+  },
+  "content": {
+    "topics": [],
+    "contentTypes": [],
+    "avgLength": 0,
+    "titlePatterns": []
+  },
+  "stats": {
+    "articlesAnalyzed": 0,
+    "totalWords": 0,
+    "learningSessions": 0
+  }
+}

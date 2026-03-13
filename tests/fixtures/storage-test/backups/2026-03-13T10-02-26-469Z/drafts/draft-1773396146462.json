@@ -1,0 +1,24 @@
+{
+  "title": "分页草稿3",
+  "content": "内容3",
+  "id": "draft-1773396146462",
+  "versions": [
+    {
+      "version": 1,
+      "content": "内容0",
+      "savedAt": "2026-03-13T10:02:26.462Z"
+    },
+    {
+      "version": 2,
+      "content": "内容1",
+      "savedAt": "2026-03-13T10:02:26.462Z"
+    },
+    {
+      "version": 3,
+      "content": "内容2",
+      "savedAt": "2026-03-13T10:02:26.462Z"
+    }
+  ],
+  "updatedAt": "2026-03-13T10:02:26.463Z",
+  "createdAt": "2026-03-13T10:02:26.462Z"
+}

@@ -1,0 +1,49 @@
+{
+  "title": "草稿8",
+  "content": "内容8",
+  "id": "draft-1773396097344",
+  "versions": [
+    {
+      "version": 1,
+      "content": "内容0",
+      "savedAt": "2026-03-13T10:01:37.344Z"
+    },
+    {
+      "version": 2,
+      "content": "内容1",
+      "savedAt": "2026-03-13T10:01:37.344Z"
+    },
+    {
+      "version": 3,
+      "content": "内容2",
+      "savedAt": "2026-03-13T10:01:37.344Z"
+    },
+    {
+      "version": 4,
+      "content": "内容3",
+      "savedAt": "2026-03-13T10:01:37.344Z"
+    },
+    {
+      "version": 5,
+      "content": "内容4",
+      "savedAt": "2026-03-13T10:01:37.344Z"
+    },
+    {
+      "version": 6,
+      "content": "内容5",
+      "savedAt": "2026-03-13T10:01:37.344Z"
+    },
+    {
+      "version": 7,
+      "content": "内容6",
+      "savedAt": "2026-03-13T10:01:37.344Z"
+    },
+    {
+      "version": 8,
+      "content": "内容7",
+      "savedAt": "2026-03-13T10:01:37.344Z"
+    }
+  ],
+  "updatedAt": "2026-03-13T10:01:37.344Z",
+  "createdAt": "2026-03-13T10:01:37.344Z"
+}
