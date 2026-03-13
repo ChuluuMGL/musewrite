@@ -67,7 +67,7 @@ type Platform = {
   }
 };
 
-type SidebarTab = 'selection' | 'history' | 'identity' | 'style' | 'skills' | 'settings';
+type SidebarTab = 'selection' | 'history' | 'identity' | 'style' | 'settings';
 type MainView = 'editor' | 'refine-info' | 'identity-form' | 'style-form' | 'api-settings' | 'platform-settings' | 'data-settings' | 'appearance-settings' | 'about' | 'result' | 'setup';
 
 type GenerationResult = {
@@ -126,12 +126,7 @@ const PLATFORM_PRESETS: Platform[] = [
   { id: 'p9', name: 'Instagram', iconId: 'p9', specs: { titleLimit: 0, contentLimit: 2200, tagLimit: 30, imageRatio: '1:1', imageCount: 10 } },
 ];
 
-const SKILL_PRESETS = [
-  { id: 'sk1', name: '爆款标题', prompt: '请为这段素材生成5个极具吸引力的爆款标题。', icon: <Zap size={14} /> },
-  { id: 'sk2', name: '摘要提取', prompt: '请提取这段素材的核心摘要。', icon: <FileText size={14} /> },
-  { id: 'sk3', name: '翻译助手', prompt: '请将这段素材翻译成地道的英文。', icon: <Globe size={14} /> },
-  { id: 'sk4', name: '内容扩写', prompt: '请根据这段素材进行扩写，增加细节和深度。', icon: <Plus size={14} /> },
-];
+
 
 export default function App() {
   // --- Global State ---
@@ -221,7 +216,9 @@ export default function App() {
         config: { responseMimeType: "application/json" }
       });
 
-      const result = JSON.parse(response.text);
+      const text = response.text;
+      const jsonStr = text.match(/\{[\s\S]*\}/)?.[0] || text;
+      const result = JSON.parse(jsonStr);
       
       setEditableResult(prev => {
         if (!prev) return null;
@@ -256,7 +253,7 @@ export default function App() {
   const [editingIdentity, setEditingIdentity] = useState<Identity | null>(null);
   const [editingStyle, setEditingStyle] = useState<StylePreset | null>(null);
 
-  const [selectedModel, setSelectedModel] = useState('gemini-3-flash-preview');
+  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash');
   const [selection, setSelection] = useState({ start: 0, end: 0, text: '' });
   const [isRefining, setIsRefining] = useState(false);
   const materialRef = useRef<HTMLTextAreaElement>(null);
@@ -366,13 +363,19 @@ export default function App() {
           const backendStyles = stylesRes.styles.map((s: any) => ({
             id: s.id,
             name: s.name,
-            desc: '后端配置的专业风格',
-            iconId: 'default'
+            desc: s.desc || '来自后端的专业写作风格',
+            iconId: 'sparkles'
           }));
+          
           setCustomStyles(prev => {
-            const combined = [...backendStyles];
-            prev.forEach(p => {
-              if (!combined.find(c => c.id === p.id)) combined.push(p);
+            const combined = [...prev];
+            backendStyles.forEach(bs => {
+              // 检查是否已存在同名或同ID的风格（包括内置风格）
+              const exists = STYLE_PRESETS.find(p => p.name === bs.name || p.id === bs.id) || 
+                             combined.find(c => c.name === bs.name || c.id === bs.id);
+              if (!exists) {
+                combined.push(bs);
+              }
             });
             return combined;
           });
@@ -443,7 +446,7 @@ export default function App() {
       if (!apiKey) throw new Error("API_KEY_MISSING");
 
       const ai = new GoogleGenAI({ apiKey });
-      const model = "gemini-3-flash-preview";
+      const model = "gemini-2.0-flash";
       
       const prompt = `
         你是一个专业的信息提取专家。请从以下素材中提取核心信息点、关键事实和重要数据。
@@ -567,7 +570,7 @@ export default function App() {
       const base64Data = base64.split(',')[1];
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
+        model: 'gemini-2.0-flash',
         contents: {
           parts: [
             { inlineData: { data: base64Data, mimeType: blob.type } },
@@ -818,7 +821,7 @@ export default function App() {
               <div className="grid grid-cols-1 gap-4 max-w-sm mx-auto">
                 <div className="p-4 bg-surface-low border border-border-subtle rounded-2xl flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white dark:bg-black rounded-xl flex items-center justify-center border border-[#EDEDED] dark:border-white/10">
+                    <div className="w-10 h-10 bg-white dark:bg-black rounded-xl flex items-center justify-center border border-border-subtle">
                       <UserCircle size={20} className="text-[#A1A1A1]" />
                     </div>
                     <div className="text-left">
@@ -831,7 +834,7 @@ export default function App() {
                 
                 <div className="p-4 bg-surface-low border border-border-subtle rounded-2xl flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white dark:bg-black rounded-xl flex items-center justify-center border border-[#EDEDED] dark:border-white/10">
+                    <div className="w-10 h-10 bg-white dark:bg-black rounded-xl flex items-center justify-center border border-border-subtle">
                       <Palette size={20} className="text-[#A1A1A1]" />
                     </div>
                     <div className="text-left">
@@ -899,13 +902,7 @@ export default function App() {
           >
             <Palette size={18} />
           </button>
-          <button 
-            onClick={() => handleTabClick('skills')}
-            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'skills' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
-            title="写作工具箱"
-          >
-            <Zap size={18} />
-          </button>
+
         </nav>
         <div className="mt-auto flex flex-col gap-3">
           <button 
@@ -1128,48 +1125,6 @@ export default function App() {
                 </section>
               )}
 
-              {sidebarTab === 'skills' && (
-                <section className="space-y-6">
-                  <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-2xl">
-                    <div className="text-xs font-bold text-amber-600 dark:text-amber-400 mb-1">AI 写作工具箱</div>
-                    <p className="text-[10px] text-amber-500/80">点击下方工具，基于当前素材快速生成特定内容。</p>
-                  </div>
-                  <div className="space-y-2">
-                    {SKILL_PRESETS.map(sk => (
-                      <button 
-                        key={sk.id}
-                        onClick={async () => {
-                          if (!material.trim()) return;
-                          setIsGenerating(true);
-                          try {
-                            const apiKey = process.env.GEMINI_API_KEY;
-                            if (!apiKey) throw new Error("API_KEY_MISSING");
-                            const ai = new GoogleGenAI({ apiKey });
-                            const response = await ai.models.generateContent({
-                              model: selectedModel,
-                              contents: `${sk.prompt}\n\n素材: ${material}`
-                            });
-                            setMaterial(prev => prev + '\n\n--- ' + sk.name + ' ---\n' + response.text);
-                          } catch (e) {
-                            alert('执行失败');
-                          } finally {
-                            setIsGenerating(false);
-                          }
-                        }}
-                        className="w-full p-4 border border-transparent hover:border-[#EDEDED] dark:hover:border-white/10 rounded-2xl flex items-center gap-3 hover:bg-white dark:hover:bg-white/5 transition-all text-left group"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-[#F7F7F7] dark:bg-white/5 flex items-center justify-center text-[#666] dark:text-[#A1A1A1] group-hover:text-black dark:group-hover:text-white transition-colors">
-                          {sk.icon}
-                        </div>
-                        <div>
-                          <div className="text-sm font-bold dark:text-white">{sk.name}</div>
-                          <div className="text-[10px] text-[#A1A1A1] line-clamp-1">{sk.prompt}</div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
 
               {sidebarTab === 'settings' && (
                 <section className="space-y-6">
@@ -1193,7 +1148,7 @@ export default function App() {
         {/* Sidebar Toggle Button */}
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-30 w-4 h-12 bg-white dark:bg-black border border-l-0 border-[#EDEDED] dark:border-white/10 rounded-r-md flex items-center justify-center text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F7F7F7] dark:hover:bg-white/5 transition-all"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-30 w-4 h-12 bg-white dark:bg-black border border-l-0 border-border-subtle rounded-r-md flex items-center justify-center text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F7F7F7] dark:hover:bg-white/5 transition-all"
         >
           {isSidebarOpen ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
         </button>
@@ -1258,27 +1213,27 @@ export default function App() {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 10 }}
-                            className="absolute bottom-full left-0 mb-4 p-2 bg-white dark:bg-[#1A1A1A] border border-[#EDEDED] dark:border-white/10 rounded-2xl shadow-2xl flex items-center gap-2 z-40"
+                            className="absolute bottom-full left-0 mb-4 p-2 bg-surface-high border border-border-subtle rounded-2xl shadow-2xl flex items-center gap-2 z-40 transition-colors"
                           >
                             <button 
                               onClick={() => handleRefineSelection('润色一下，让表达更生动')}
-                              className="px-3 py-1.5 text-xs font-bold hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-lg transition-colors flex items-center gap-2 dark:text-white"
+                              className="px-3 py-1.5 text-xs font-bold hover:bg-brand/5 dark:hover:bg-brand/10 rounded-lg transition-colors flex items-center gap-2 dark:text-white"
                             >
                               <Sparkles size={14} className="text-amber-500" /> 润色
                             </button>
                             <button 
                               onClick={() => handleRefineSelection('扩写这段内容，增加细节')}
-                              className="px-3 py-1.5 text-xs font-bold hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-lg transition-colors flex items-center gap-2 dark:text-white"
+                              className="px-3 py-1.5 text-xs font-bold hover:bg-brand/5 dark:hover:bg-brand/10 rounded-lg transition-colors flex items-center gap-2 dark:text-white"
                             >
                               <Plus size={14} className="text-blue-500" /> 扩写
                             </button>
                             <button 
                               onClick={() => handleRefineSelection('简练一些，去除冗余')}
-                              className="px-3 py-1.5 text-xs font-bold hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-lg transition-colors flex items-center gap-2 dark:text-white"
+                              className="px-3 py-1.5 text-xs font-bold hover:bg-brand/5 dark:hover:bg-brand/10 rounded-lg transition-colors flex items-center gap-2 dark:text-white"
                             >
                               <Zap size={14} className="text-green-500" /> 简练
                             </button>
-                            <div className="w-px h-4 bg-[#EDEDED] dark:bg-white/10 mx-1" />
+                            <div className="w-px h-4 bg-border-subtle mx-1" />
                             <button 
                               onClick={() => setSelection({ start: 0, end: 0, text: '' })}
                               className="p-1.5 hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-lg text-[#A1A1A1]"
@@ -1295,7 +1250,7 @@ export default function App() {
                               onClick={() => {
                                 if (confirm('确定要清空当前素材吗？')) setMaterial('');
                               }}
-                              className="p-2 text-[#A1A1A1] hover:text-red-500 transition-colors bg-white/50 dark:bg-black/50 rounded-full backdrop-blur-sm"
+                              className="p-2 text-[#A1A1A1] hover:text-red-500 transition-colors bg-surface-low/50 backdrop-blur-sm rounded-full"
                               title="清空素材"
                             >
                               <Trash2 size={20} />
@@ -1308,7 +1263,7 @@ export default function App() {
                       <StatusPill label={currentIdentity.name} onClick={() => setSidebarTab('identity')} />
                       <div className="relative group/style">
                         <StatusPill label={currentStyle.name} onClick={() => setSidebarTab('style')} />
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-4 bg-white dark:bg-[#1A1A1A] border border-[#EDEDED] dark:border-white/10 rounded-2xl shadow-2xl opacity-0 invisible group-hover/style:opacity-100 group-hover/style:visible transition-all z-50">
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-4 bg-white dark:bg-[#1A1A1A] border border-border-subtle rounded-2xl shadow-2xl opacity-0 invisible group-hover/style:opacity-100 group-hover/style:visible transition-all z-50">
                           <div className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] mb-2">当前风格</div>
                           <div className="prose prose-xs dark:prose-invert">
                             <Markdown>{currentStyle.desc}</Markdown>
@@ -1320,25 +1275,25 @@ export default function App() {
                       <div className="relative group/model">
                         <button className="px-4 py-1.5 bg-black dark:bg-white text-white dark:text-black border border-black dark:border-white rounded-full text-[12px] font-bold flex items-center gap-2 hover:opacity-80 transition-all">
                           <Zap size={14} className="text-amber-500" />
-                          {selectedModel === 'gemini-3-flash-preview' ? 'Gemini 3 Flash' : 'Gemini 3.1 Pro'}
+                          {selectedModel === 'gemini-2.0-flash' ? 'Gemini 2.0 Flash' : 'Gemini 1.5 Pro'}
                         </button>
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 bg-white dark:bg-[#1A1A1A] border border-[#EDEDED] dark:border-white/10 rounded-2xl shadow-xl opacity-0 invisible group-hover/model:opacity-100 group-hover/model:visible transition-all z-50 p-2">
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 bg-white dark:bg-[#1A1A1A] border border-border-subtle rounded-2xl shadow-xl opacity-0 invisible group-hover/model:opacity-100 group-hover/model:visible transition-all z-50 p-2">
                           <div className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] px-3 py-2">选择模型</div>
                           <button 
-                            onClick={() => setSelectedModel('gemini-3-flash-preview')}
-                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-between ${selectedModel === 'gemini-3-flash-preview' ? 'bg-black text-white' : 'hover:bg-[#F7F7F7] dark:hover:bg-white/5 dark:text-white'}`}
+                            onClick={() => setSelectedModel('gemini-2.0-flash')}
+                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-between ${selectedModel === 'gemini-2.0-flash' ? 'bg-black text-white' : 'hover:bg-[#F7F7F7] dark:hover:bg-white/5 dark:text-white'}`}
                           >
-                            <span>Gemini 3 Flash</span>
-                            {selectedModel === 'gemini-3-flash-preview' && <Check size={12} />}
+                            <span>Gemini 2.0 Flash</span>
+                            {selectedModel === 'gemini-2.0-flash' && <Check size={12} />}
                           </button>
                           <button 
-                            onClick={() => setSelectedModel('gemini-3.1-pro-preview')}
-                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-between ${selectedModel === 'gemini-3.1-pro-preview' ? 'bg-black text-white' : 'hover:bg-[#F7F7F7] dark:hover:bg-white/5 dark:text-white'}`}
+                            onClick={() => setSelectedModel('gemini-1.5-pro')}
+                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-between ${selectedModel === 'gemini-1.5-pro' ? 'bg-black text-white' : 'hover:bg-[#F7F7F7] dark:hover:bg-white/5 dark:text-white'}`}
                           >
-                            <span>Gemini 3.1 Pro</span>
-                            {selectedModel === 'gemini-3.1-pro-preview' && <Check size={12} />}
+                            <span>Gemini 1.5 Pro</span>
+                            {selectedModel === 'gemini-1.5-pro' && <Check size={12} />}
                           </button>
-                          <div className="h-px bg-[#EDEDED] dark:bg-white/10 my-1" />
+                          <div className="h-px bg-border-subtle my-1" />
                           <div className="px-3 py-2 text-[10px] text-[#A1A1A1]">更多模型即将支持 (Ollama/Claude)</div>
                         </div>
                       </div>
@@ -1348,7 +1303,7 @@ export default function App() {
                       <button 
                         onClick={handleDirectGenerate}
                         disabled={!material.trim() || isGenerating}
-                        className="relative group px-12 py-4 bg-black dark:bg-white dark:text-black text-white rounded-full font-bold tracking-[0.2em] uppercase overflow-hidden transition-all active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed shadow-xl shadow-black/10"
+                        className="relative group px-12 py-4 bg-brand text-white dark:text-black shadow-xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                         <span className="relative flex items-center gap-3">
@@ -1406,7 +1361,7 @@ export default function App() {
                       <button 
                         onClick={handleGenerate}
                         disabled={!extractedInfo.trim() || isGenerating}
-                        className="relative group px-12 py-4 bg-black dark:bg-white dark:text-black text-white rounded-full font-bold tracking-[0.2em] uppercase overflow-hidden transition-all active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed shadow-xl shadow-black/10"
+                        className="relative group px-12 py-4 bg-brand text-white dark:text-black shadow-xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                         <span className="relative flex items-center gap-3">
@@ -1467,12 +1422,12 @@ export default function App() {
                     <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-full dark:text-white"><ChevronLeft size={20} /></button>
                     <h2 className="text-2xl font-bold tracking-tight dark:text-white">API 设置</h2>
                   </div>
-                  <div className="p-8 bg-[#F7F7F7] dark:bg-white/5 rounded-3xl space-y-6">
+                  <div className="p-8 bg-surface-low rounded-3xl space-y-6">
                     <div className="space-y-2">
                       <h3 className="text-sm font-bold dark:text-white">Gemini API Key</h3>
                       <p className="text-xs text-[#666] dark:text-[#A1A1A1]">当前使用平台托管的 API Key，无需手动配置。</p>
                       <div className="flex items-center gap-2 mt-4">
-                        <div className="flex-1 px-4 py-2 bg-white dark:bg-black/20 border border-[#EDEDED] dark:border-white/10 rounded-lg font-mono text-xs text-[#A1A1A1]">
+                        <div className="flex-1 px-4 py-2 bg-white dark:bg-black/20 border border-border-subtle rounded-lg font-mono text-xs text-[#A1A1A1]">
                           ••••••••••••••••••••••••••••••••
                         </div>
                         <button 
@@ -1483,10 +1438,10 @@ export default function App() {
                         </button>
                       </div>
                     </div>
-                    <div className="h-px bg-[#EDEDED] dark:bg-white/10" />
+                    <div className="h-px bg-border-subtle" />
                     <div className="space-y-4">
                         <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-white">当前后端 API 服务</label>
-                        <div className="flex items-center gap-3 p-4 bg-white dark:bg-black/20 border border-[#EDEDED] dark:border-white/10 rounded-2xl">
+                        <div className="flex items-center gap-3 p-4 bg-white dark:bg-black/20 border border-border-subtle rounded-2xl">
                           <div className={`w-2 h-2 rounded-full ${isBackendConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                           <div className="flex-1">
                             <div className="text-sm font-bold dark:text-white">Local MuseWrite Server</div>
@@ -1494,7 +1449,7 @@ export default function App() {
                           </div>
                         </div>
                       </div>
-                    <div className="h-px bg-[#EDEDED] dark:bg-white/10" />
+                    <div className="h-px bg-border-subtle" />
                     <div className="space-y-2">
                       <h3 className="text-sm font-bold dark:text-white">模型选择</h3>
                       <div className="p-4 bg-white dark:bg-black/20 border border-black dark:border-white rounded-xl flex items-center justify-between">
@@ -1525,9 +1480,9 @@ export default function App() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {platformConfigs.map(p => (
-                      <div key={p.id} className="p-6 border border-[#EDEDED] dark:border-white/10 rounded-3xl space-y-6 bg-[#FBFBFB] dark:bg-white/5">
+                      <div key={p.id} className="p-6 border border-border-subtle rounded-3xl space-y-6 bg-[#FBFBFB] dark:bg-white/5">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-white dark:bg-black/20 border border-[#EDEDED] dark:border-white/10 flex items-center justify-center text-black dark:text-white shadow-sm">
+                          <div className="w-10 h-10 rounded-xl bg-white dark:bg-black/20 border border-border-subtle flex items-center justify-center text-black dark:text-white shadow-sm">
                             {PLATFORM_ICONS[p.iconId]}
                           </div>
                           <h3 className="font-bold dark:text-white">{p.name} 规范</h3>
@@ -1542,7 +1497,7 @@ export default function App() {
                                 const val = parseInt(e.target.value);
                                 setPlatformConfigs(prev => prev.map(x => x.id === p.id ? { ...x, specs: { ...x.specs, titleLimit: val } } : x));
                               }}
-                              className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-[#EDEDED] dark:border-white/10 rounded-lg text-sm outline-none focus:border-black dark:focus:border-white"
+                              className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-border-subtle rounded-lg text-sm outline-none focus:border-black dark:focus:border-white"
                             />
                           </div>
                           <div className="space-y-1.5">
@@ -1554,7 +1509,7 @@ export default function App() {
                                 const val = parseInt(e.target.value);
                                 setPlatformConfigs(prev => prev.map(x => x.id === p.id ? { ...x, specs: { ...x.specs, contentLimit: val } } : x));
                               }}
-                              className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-[#EDEDED] dark:border-white/10 rounded-lg text-sm outline-none focus:border-black dark:focus:border-white"
+                              className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-border-subtle rounded-lg text-sm outline-none focus:border-black dark:focus:border-white"
                             />
                           </div>
                           <div className="space-y-1.5">
@@ -1566,7 +1521,7 @@ export default function App() {
                                 const val = parseInt(e.target.value);
                                 setPlatformConfigs(prev => prev.map(x => x.id === p.id ? { ...x, specs: { ...x.specs, tagLimit: val } } : x));
                               }}
-                              className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-[#EDEDED] dark:border-white/10 rounded-lg text-sm outline-none focus:border-black dark:focus:border-white"
+                              className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-border-subtle rounded-lg text-sm outline-none focus:border-black dark:focus:border-white"
                             />
                           </div>
                           <div className="space-y-1.5">
@@ -1576,7 +1531,7 @@ export default function App() {
                               onChange={(e) => {
                                 setPlatformConfigs(prev => prev.map(x => x.id === p.id ? { ...x, specs: { ...x.specs, imageRatio: e.target.value } } : x));
                               }}
-                              className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-[#EDEDED] dark:border-white/10 rounded-lg text-sm outline-none focus:border-black dark:focus:border-white"
+                              className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-border-subtle rounded-lg text-sm outline-none focus:border-black dark:focus:border-white"
                             >
                               <option value="1:1">1:1 正方形</option>
                               <option value="3:4">3:4 纵向</option>
@@ -1605,22 +1560,22 @@ export default function App() {
                     <h2 className="text-2xl font-bold tracking-tight dark:text-white">数据存储</h2>
                   </div>
                   <div className="space-y-6">
-                    <div className="p-8 bg-[#F7F7F7] dark:bg-white/5 rounded-3xl space-y-6">
+                    <div className="p-8 bg-surface-low rounded-3xl space-y-6">
                       <div className="space-y-2">
                         <h3 className="text-sm font-bold dark:text-white">本地备份</h3>
                         <p className="text-xs text-[#666] dark:text-[#A1A1A1]">导出所有配置、人设、风格和历史记录到本地 JSON 文件。</p>
                         <button 
                           onClick={handleExportData}
-                          className="mt-4 px-6 py-3 bg-black dark:bg-white dark:text-black text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center gap-2"
+                          className="mt-4 px-6 py-3 bg-brand text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center gap-2"
                         >
                           <Download size={16} /> 导出备份文件
                         </button>
                       </div>
-                      <div className="h-px bg-[#EDEDED] dark:bg-white/10" />
+                      <div className="h-px bg-border-subtle" />
                       <div className="space-y-2">
                         <h3 className="text-sm font-bold dark:text-white">恢复数据</h3>
                         <p className="text-xs text-[#666] dark:text-[#A1A1A1]">从备份文件恢复所有数据。注意：这会覆盖当前所有数据。</p>
-                        <label className="mt-4 inline-flex items-center gap-2 px-6 py-3 border border-[#EDEDED] dark:border-white/10 rounded-xl font-bold text-sm hover:border-black dark:hover:border-white transition-all cursor-pointer">
+                        <label className="mt-4 inline-flex items-center gap-2 px-6 py-3 border border-border-subtle rounded-xl font-bold text-sm hover:border-black dark:hover:border-white transition-all cursor-pointer">
                           <Upload size={16} /> 导入备份文件
                           <input type="file" accept=".json" onChange={handleImportData} className="hidden" />
                         </label>
@@ -1641,7 +1596,7 @@ export default function App() {
                     <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-full dark:text-white"><ChevronLeft size={20} /></button>
                     <h2 className="text-2xl font-bold tracking-tight dark:text-white">外观设置</h2>
                   </div>
-                  <div className="p-8 bg-[#F7F7F7] dark:bg-white/5 rounded-3xl space-y-8">
+                  <div className="p-8 bg-surface-low rounded-3xl space-y-8">
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-sm font-bold dark:text-white">深色模式</h3>
@@ -1688,17 +1643,17 @@ export default function App() {
                       <p>MuseWrite 是一款为您量身定制的 AI 创作助手。它基于先进的四层卡片系统，旨在让创作过程如流水般自然。</p>
                       
                       <div className="grid grid-cols-2 gap-6">
-                        <div className="p-6 border border-[#EDEDED] dark:border-white/10 rounded-2xl">
+                        <div className="p-6 border border-border-subtle rounded-2xl">
                           <h4 className="font-bold text-black dark:text-white mb-2">四层卡片系统</h4>
                           <p className="text-xs">素材卡 → 信息卡 → 风格卡 → 平台卡，构建完整的创作逻辑。</p>
                         </div>
-                        <div className="p-6 border border-[#EDEDED] dark:border-white/10 rounded-2xl">
+                        <div className="p-6 border border-border-subtle rounded-2xl">
                           <h4 className="font-bold text-black dark:text-white mb-2">多平台适配</h4>
                           <p className="text-xs">支持 16+ 个主流平台，自动适配发布规范与配图比例。</p>
                         </div>
                       </div>
 
-                      <div className="p-6 bg-[#F7F7F7] dark:bg-white/5 rounded-2xl space-y-4">
+                      <div className="p-6 bg-surface-low rounded-2xl space-y-4">
                         <h4 className="font-bold text-black dark:text-white">致谢</h4>
                         <p className="text-xs">感谢 Google Gemini 提供强大的 AI 能力支持。</p>
                         <div className="flex gap-4">
@@ -1720,7 +1675,7 @@ export default function App() {
               >
                 <div className="max-w-[960px] mx-auto px-6 py-12 space-y-12">
                   {/* Platform Tabs */}
-                  <div className="flex border-b border-[#EDEDED] dark:border-white/10 gap-8">
+                  <div className="flex border-b border-border-subtle gap-8">
                     <button 
                       onClick={() => setActivePreviewTab('master')}
                       className={`pb-4 text-sm font-bold transition-all relative ${activePreviewTab === 'master' ? 'text-brand' : 'text-[#A1A1A1] hover:text-[#666]'}`}
@@ -1910,7 +1865,7 @@ export default function App() {
                                     }
                                   }
                                 }}
-                                className="px-3 py-1 bg-transparent border border-dashed border-[#EDEDED] dark:border-white/10 rounded-full text-xs text-[#A1A1A1] outline-none focus:border-black dark:focus:border-white w-20 transition-all"
+                                className="px-3 py-1 bg-transparent border border-dashed border-border-subtle rounded-full text-xs text-[#A1A1A1] outline-none focus:border-black dark:focus:border-white w-20 transition-all"
                               />
                             </div>
                           </div>
@@ -1977,7 +1932,7 @@ export default function App() {
                             </div>
 
                             <div className="pt-4 border-t border-black/5 dark:border-white/5">
-                              <button className="w-full py-2.5 rounded-xl bg-white dark:bg-white/5 text-[10px] font-bold text-black dark:text-white border border-[#EDEDED] dark:border-white/10 hover:border-black dark:hover:border-white transition-all">
+                              <button className="w-full py-2.5 rounded-xl bg-white dark:bg-white/5 text-[10px] font-bold text-black dark:text-white border border-border-subtle hover:border-black dark:hover:border-white transition-all">
                                 重新进行深度质量审计
                               </button>
                             </div>
@@ -1987,7 +1942,7 @@ export default function App() {
                             <h4 className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">配图预览</h4>
                             <div className="grid grid-cols-1 gap-4">
                               {editableResult.imageUrl ? (
-                                <div className="rounded-[32px] bg-slate-100 dark:bg-white/5 border border-[#EDEDED] dark:border-white/10 overflow-hidden relative group cursor-pointer aspect-square shadow-sm">
+                                <div className="rounded-[32px] bg-surface-low border border-border-subtle overflow-hidden relative group cursor-pointer aspect-square shadow-sm">
                                   <img src={editableResult.imageUrl} className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105" alt="" />
                                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
                                     <button 
@@ -2010,7 +1965,7 @@ export default function App() {
                                     const ratio = activePreviewTab === 'master' ? '1:1' : (platformConfigs.find(p => p.id === activePreviewTab)?.specs.imageRatio || '1:1');
                                     const ratioClass = ratio === '3:4' ? 'aspect-[3/4]' : ratio === '9:16' ? 'aspect-[9/16]' : ratio === '16:9' ? 'aspect-[16/9]' : ratio === '2.35:1' ? 'aspect-[2.35/1]' : 'aspect-square';
                                     return (
-                                      <div key={i} className={`rounded-2xl bg-slate-100 dark:bg-white/5 border border-[#EDEDED] dark:border-white/10 overflow-hidden relative group cursor-pointer ${ratioClass}`}>
+                                      <div key={i} className={`rounded-2xl bg-surface-low border border-border-subtle overflow-hidden relative group cursor-pointer ${ratioClass}`}>
                                         <img src={`https://picsum.photos/seed/muse-${activePreviewTab}-${i}/800/800`} className="absolute inset-0 w-full h-full object-cover transition-transform group-hover:scale-105" alt="" />
                                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                           <RefreshCw size={20} className="text-white" />
@@ -2025,7 +1980,7 @@ export default function App() {
                             <p className="text-[10px] text-[#A1A1A1] text-center font-bold uppercase tracking-widest">符合 {activePreviewTab === 'master' ? '默认' : platformConfigs.find(p => p.id === activePreviewTab)?.name} 规范的配图建议</p>
                           </div>
 
-                          <div className="p-6 bg-[#F7F7F7] dark:bg-white/5 border border-[#EDEDED] dark:border-white/10 rounded-[32px] space-y-4">
+                          <div className="p-6 bg-surface-low border border-border-subtle rounded-[32px] space-y-4">
                             <h4 className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">平台规范检查</h4>
                             <div className="space-y-3">
                               {activePreviewTab === 'master' ? (
@@ -2072,7 +2027,7 @@ export default function App() {
 
 
   return (
-    <div className={`font-sans antialiased text-black dark:text-white bg-white dark:bg-black selection:bg-black selection:text-white overflow-hidden ${isDarkMode ? 'dark' : ''}`}>
+    <div className={`font-sans antialiased text-foreground bg-[var(--background)] selection:bg-accent-blue selection:text-white overflow-hidden ${isDarkMode ? 'dark' : ''}`}>
       <AnimatePresence mode="wait">
         {mainView === 'setup' ? renderSetup() : renderMainLayout()}
       </AnimatePresence>
@@ -2090,7 +2045,7 @@ export default function App() {
           >
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="w-full max-w-md bg-white dark:bg-[#1A1A1A] rounded-3xl overflow-hidden shadow-2xl border border-[#EDEDED] dark:border-white/10"
+              className="w-full max-w-md bg-white dark:bg-[#1A1A1A] rounded-3xl overflow-hidden shadow-2xl border border-border-subtle"
             >
               <div className="p-8 space-y-6">
                 <div className="flex items-center justify-between">
@@ -2106,14 +2061,14 @@ export default function App() {
                     value={imagePrompt}
                     onChange={(e) => setImagePrompt(e.target.value)}
                     placeholder="例如：把背景换成森林，或者让角色穿上红色的衣服..."
-                    className="w-full h-32 p-4 bg-[#F7F7F7] dark:bg-white/5 border border-[#EDEDED] dark:border-white/10 rounded-2xl outline-none focus:border-black dark:focus:border-white transition-all text-sm resize-none dark:text-white"
+                    className="w-full h-32 p-4 bg-surface-low border border-border-subtle rounded-2xl outline-none focus:border-brand transition-all text-sm resize-none dark:text-white"
                   />
                 </div>
                 
                 <button 
                   onClick={handleModifyImage}
                   disabled={!imagePrompt.trim() || isModifyingImage}
-                  className="w-full py-4 bg-black dark:bg-white text-white dark:text-black rounded-2xl font-bold hover:opacity-90 transition-all disabled:opacity-20 flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-brand text-white rounded-2xl font-bold hover:opacity-90 transition-all disabled:opacity-20 flex items-center justify-center gap-2"
                 >
                   {isModifyingImage ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
                   {isModifyingImage ? '修改中...' : '确认修改'}
@@ -2144,7 +2099,7 @@ function StatusPill({ label, onClick }: { label: string; onClick?: () => void })
   return (
     <div 
       onClick={onClick}
-      className="px-4 py-1.5 bg-[#F7F7F7] dark:bg-white/5 border border-[#EDEDED] dark:border-white/10 rounded-full text-[12px] font-bold text-[#666] dark:text-[#A1A1A1] hover:text-black dark:hover:text-white hover:border-black dark:hover:border-white transition-all cursor-pointer"
+      className="px-4 py-1.5 bg-surface-low border border-border-subtle rounded-full text-[12px] font-bold text-[#666] dark:text-[#A1A1A1] hover:text-black dark:hover:text-white hover:border-black dark:hover:border-white transition-all cursor-pointer"
     >
       {label}
     </div>
@@ -2178,7 +2133,7 @@ function SettingsCard({ title, desc, onClick }: { title: string; desc: string; o
   return (
     <div 
       onClick={onClick}
-      className="p-6 border border-[#EDEDED] dark:border-white/10 rounded-2xl flex items-center justify-between cursor-pointer hover:border-black dark:hover:border-white transition-colors group"
+      className="p-6 border border-border-subtle rounded-2xl flex items-center justify-between cursor-pointer hover:border-black dark:hover:border-white transition-colors group"
     >
       <div>
         <div className="font-bold mb-1 dark:text-white">{title}</div>
@@ -2202,7 +2157,7 @@ function IdentityForm({ initialData, onSave, onImport }: { initialData: Partial<
             type="text" 
             value={name} 
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-[#EDEDED] dark:border-white/10 dark:bg-black/20 dark:text-white outline-none focus:border-black dark:focus:border-white transition-colors" 
+            className="w-full px-4 py-3 rounded-xl border border-border-subtle dark:bg-black/20 dark:text-white outline-none focus:border-black dark:focus:border-white transition-colors" 
             placeholder="例如：周沫"
           />
         </div>
@@ -2218,7 +2173,7 @@ function IdentityForm({ initialData, onSave, onImport }: { initialData: Partial<
             rows={10} 
             value={bio} 
             onChange={(e) => setBio(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-[#EDEDED] dark:border-white/10 dark:bg-black/20 dark:text-white outline-none focus:border-black dark:focus:border-white transition-colors resize-none text-sm leading-relaxed" 
+            className="w-full px-4 py-3 rounded-xl border border-border-subtle dark:bg-black/20 dark:text-white outline-none focus:border-black dark:focus:border-white transition-colors resize-none text-sm leading-relaxed" 
             placeholder="描述一下这个人是谁，或者粘贴一些他的作品作为学习数据..."
           />
         </div>
@@ -2226,7 +2181,7 @@ function IdentityForm({ initialData, onSave, onImport }: { initialData: Partial<
       <button 
         onClick={() => onSave({ name, bio })}
         disabled={!name || !bio}
-        className="w-full py-4 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:bg-[#333] dark:hover:bg-[#E0E0E0] transition-all disabled:opacity-20"
+        className="w-full py-4 bg-brand text-white dark:text-black rounded-xl font-bold hover:opacity-90 transition-all disabled:opacity-20"
       >
         保存人设
       </button>
@@ -2260,7 +2215,7 @@ function StyleForm({ initialData, onSave }: { initialData: Partial<StylePreset>;
               <button
                 key={opt.id}
                 onClick={() => setIconId(opt.id)}
-                className={`p-3 rounded-xl border transition-all ${iconId === opt.id ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black' : 'border-[#EDEDED] dark:border-white/10 hover:border-black dark:hover:border-white bg-white dark:bg-white/5 dark:text-white'}`}
+                className={`p-3 rounded-xl border transition-all ${iconId === opt.id ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black' : 'border-border-subtle hover:border-black dark:hover:border-white bg-white dark:bg-white/5 dark:text-white'}`}
               >
                 {opt.icon}
               </button>
@@ -2273,7 +2228,7 @@ function StyleForm({ initialData, onSave }: { initialData: Partial<StylePreset>;
             type="text" 
             value={name} 
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-[#EDEDED] dark:border-white/10 dark:bg-black/20 dark:text-white outline-none focus:border-black dark:focus:border-white transition-colors" 
+            className="w-full px-4 py-3 rounded-xl border border-border-subtle dark:bg-black/20 dark:text-white outline-none focus:border-black dark:focus:border-white transition-colors" 
             placeholder="例如：犀利"
           />
         </div>
@@ -2283,7 +2238,7 @@ function StyleForm({ initialData, onSave }: { initialData: Partial<StylePreset>;
             rows={4} 
             value={desc} 
             onChange={(e) => setDesc(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-[#EDEDED] dark:border-white/10 dark:bg-black/20 dark:text-white outline-none focus:border-black dark:focus:border-white transition-colors resize-none text-sm leading-relaxed" 
+            className="w-full px-4 py-3 rounded-xl border border-border-subtle dark:bg-black/20 dark:text-white outline-none focus:border-black dark:focus:border-white transition-colors resize-none text-sm leading-relaxed" 
             placeholder="描述这种风格的特点，例如：语言简练，多用反问句..."
           />
         </div>
@@ -2291,7 +2246,7 @@ function StyleForm({ initialData, onSave }: { initialData: Partial<StylePreset>;
       <button 
         onClick={() => onSave({ name, desc, iconId })}
         disabled={!name || !desc}
-        className="w-full py-4 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:bg-[#333] dark:hover:bg-[#E0E0E0] transition-all disabled:opacity-20"
+        className="w-full py-4 bg-brand text-white dark:text-black rounded-xl font-bold hover:opacity-90 transition-all disabled:opacity-20"
       >
         保存风格
       </button>
