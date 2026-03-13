@@ -25,7 +25,7 @@ describe('CardLoader', () => {
       const card = loader.loadPlatformCard('xiaohongshu');
 
       expect(card).toBeDefined();
-      expect(card.name || card.platform).toBeDefined();
+      expect(typeof card === 'string').toBe(true); // Raw string
     });
 
     test('should load wordpress platform card', () => {
@@ -34,10 +34,8 @@ describe('CardLoader', () => {
       expect(card).toBeDefined();
     });
 
-    test('should return null for non-existent platform', () => {
-      const card = loader.loadPlatformCard('nonexistent');
-
-      expect(card).toBeNull();
+    test('should throw error for non-existent platform', () => {
+      expect(() => loader.loadPlatformCard('nonexistent')).toThrow();
     });
   });
 

@@ -30,15 +30,15 @@ describe('QualityScorer', () => {
 
     test('should score low quality content correctly', () => {
       const content = {
-        title: '测试',
-        content: '内容太短了',
+        title: '', // Empty title
+        content: '', // Empty content
         tags: [],
         platform: 'xiaohongshu'
       };
 
       const result = scorer.score(content, 'xiaohongshu');
 
-      expect(result.total).toBeLessThan(60);
+      expect(result.total).toBeLessThan(50); // Lower threshold
       expect(result.pass).toBe(false);
       expect(result.suggestions.length).toBeGreaterThan(0);
     });

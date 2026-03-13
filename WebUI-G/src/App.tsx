@@ -50,7 +50,8 @@ import {
   MoreVertical,
   Cpu,
   Cloud,
-  Database
+  Database,
+  Search
 } from 'lucide-react';
 
 // --- Types ---
@@ -280,14 +281,16 @@ export default function App() {
   const [editingIdentity, setEditingIdentity] = useState<Identity | null>(null);
   const [editingStyle, setEditingStyle] = useState<StylePreset | null>(null);
 
-  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash');
+  const [selectedModel, setSelectedModel] = useState('gemini-1.5-flash');
   const [userApiKey, setUserApiKey] = useState(() => localStorage.getItem('musewrite_user_api_key') || '');
   const [tempApiKey, setTempApiKey] = useState(() => localStorage.getItem('musewrite_user_api_key') || '');
   const [isTestingKey, setIsTestingKey] = useState(false);
   const [llmConfig, setLlmConfig] = useState<{
-    providers: { name: string, model: string, configured: boolean }[],
+    providers: { name: string, model: string, configured: boolean, description?: string, type?: string }[],
     defaultProvider: string
   }>({ providers: [], defaultProvider: '' });
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+  const [modelSearch, setModelSearch] = useState('');
   const [selection, setSelection] = useState({ start: 0, end: 0, text: '' });
   const [isRefining, setIsRefining] = useState(false);
   const materialRef = useRef<HTMLTextAreaElement>(null);
@@ -1524,19 +1527,12 @@ export default function App() {
                 className="h-full overflow-y-auto custom-scrollbar p-12"
               >
                 <div className="max-w-[640px] mx-auto space-y-12">
-                  <div className="flex items-center gap-4">
-                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-full dark:text-white"><ChevronLeft size={20} /></button>
-                    <h2 className="text-2xl font-bold tracking-tight dark:text-white">API 设置</h2>
-                  </div>
+                  {/* Removed main title header as it's repetitive with breadcrumbs */}
+
                   <div className="p-8 bg-surface-low rounded-3xl space-y-6">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <h3 className="text-sm font-bold dark:text-white">API Key</h3>
-                        <div className="flex gap-2">
-                          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 hover:underline">Gemini</a>
-                          <span className="text-[10px] text-[#D1D1D1]">|</span>
-                          <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 hover:underline">OpenAI</a>
-                        </div>
                       </div>
                       <p className="text-xs text-[#666] dark:text-[#A1A1A1]">请输入您的模型 API Key。如果是本地 Ollama，则无需配置。</p>
                       <div className="flex items-center gap-2 mt-4">
@@ -1588,71 +1584,124 @@ export default function App() {
                     <div className="h-px bg-border-subtle" />
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-bold dark:text-white">模型选择</h3>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-white">模型选择</label>
                         {isBackendConnected && (
-                          <div className="text-[10px] text-[#A1A1A1] flex items-center gap-1">
-                            <CheckCircle2 size={10} className="text-green-500" />
-                            同步自后端
+                          <div className="text-[10px] text-green-500 flex items-center gap-1 font-bold">
+                            <CheckCircle2 size={10} />
+                            已同步
                           </div>
                         )}
                       </div>
                       
-                      <div className="grid grid-cols-1 gap-3">
-                        {isBackendConnected && llmConfig.providers.length > 0 ? (
-                          llmConfig.providers.map(p => (
-                            <button 
-                              key={p.name}
-                              onClick={() => setSelectedModel(p.model)}
-                              className={`p-4 rounded-2xl border transition-all flex items-center justify-between group ${selectedModel === p.model ? 'border-black bg-white dark:border-white dark:bg-white/10' : 'border-transparent bg-white dark:bg-black/20 hover:border-black/10 dark:hover:border-white/10'}`}
-                            >
-                              <div className="flex items-center gap-4">
-                                <div className={`p-2 rounded-xl ${selectedModel === p.model ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-surface-low dark:bg-white/5'}`}>
-                                  {p.name === 'ollama' ? <Cpu size={18} /> : 
-                                   p.name === 'openai-compatible' ? <Database size={18} /> : 
-                                   <Cloud size={18} />}
+                      {/* Dropdown Container */}
+                      <div className="relative">
+                        <button 
+                          onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+                          className={`w-full p-5 bg-white dark:bg-black/20 border rounded-3xl flex items-center justify-between transition-all group ${isModelDropdownOpen ? 'border-brand ring-4 ring-brand/5 shadow-lg' : 'border-border-subtle hover:border-brand/40'}`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="p-3 bg-brand/5 text-brand rounded-2xl group-hover:scale-110 transition-transform">
+                              {selectedModel.includes('gemini') ? <Sparkles size={20} /> : 
+                               selectedModel.includes('gpt') ? <Zap size={20} /> : 
+                               <Cloud size={20} />}
+                            </div>
+                            <div className="text-left">
+                              <div className="text-sm font-bold dark:text-white capitalize">{selectedModel}</div>
+                              <div className="text-[10px] text-[#666] dark:text-[#A1A1A1]">正在使用</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 text-[#A1A1A1]">
+                            <ChevronRight size={16} className={`transition-transform duration-300 ${isModelDropdownOpen ? 'rotate-90' : ''}`} />
+                          </div>
+                        </button>
+
+                        {/* Searchable Inline Dropdown */}
+                        <AnimatePresence>
+                          {isModelDropdownOpen && (
+                            <>
+                              {/* Overlay to close on click outside */}
+                              <div 
+                                className="fixed inset-0 z-[60]" 
+                                onClick={() => setIsModelDropdownOpen(false)} 
+                              />
+                              
+                              <motion.div 
+                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                className="absolute top-full left-0 right-0 mt-3 p-3 bg-white dark:bg-[#1A1A1A] border border-border-subtle rounded-[32px] shadow-2xl z-[70] overflow-hidden flex flex-col max-h-[420px]"
+                              >
+
+
+                                <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 px-1 pb-2">
+                                  {(() => {
+                                    const filtered = llmConfig.providers.filter(p => 
+                                      p.name.toLowerCase().includes(modelSearch.toLowerCase()) || 
+                                      p.model.toLowerCase().includes(modelSearch.toLowerCase())
+                                    );
+                                    
+                                    const grouped = filtered.reduce((acc, p) => {
+                                      if (!acc[p.name]) acc[p.name] = [];
+                                      acc[p.name].push(p);
+                                      return acc;
+                                    }, {} as Record<string, any[]>);
+
+                                    return Object.entries(grouped).length > 0 ? (
+                                      Object.entries(grouped).map(([pName, models]) => (
+                                        <div key={pName} className="space-y-1">
+                                          <div className="px-3 py-1 text-[9px] font-black uppercase tracking-[0.2em] text-[#A1A1A1]/60">
+                                            {pName}
+                                          </div>
+                                          {(models as any[]).map(p => (
+                                            <button 
+                                              key={p.model}
+                                              onClick={() => {
+                                                setSelectedModel(p.model);
+                                                setIsModelDropdownOpen(false);
+                                                setModelSearch('');
+                                              }}
+                                              className={`w-full p-3 rounded-2xl flex items-center justify-between transition-all group ${selectedModel === p.model ? 'bg-black text-white dark:bg-white dark:text-black shadow-lg shadow-black/5' : 'hover:bg-[#F7F7F7] dark:hover:bg-white/5'}`}
+                                            >
+                                              <div className="flex items-center gap-3 min-w-0">
+                                                <div className={`p-1.5 rounded-lg ${selectedModel === p.model ? 'bg-white/20' : 'bg-surface-low dark:bg-white/5 text-[#A1A1A1]'}`}>
+                                                  {p.name === 'ollama' ? <Cpu size={12} /> : <Cloud size={12} />}
+                                                </div>
+                                                <div className="text-left min-w-0">
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="text-[12px] font-bold truncate">{p.model}</span>
+                                                    {p.configured && <Check size={10} className={selectedModel === p.model ? 'text-white/60' : 'text-green-500'} />}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                              {selectedModel === p.model && <CheckCircle2 size={14} />}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <div className="py-12 text-center text-[#A1A1A1] text-[10px] font-bold">未找到匹配结果</div>
+                                    );
+                                  })()}
                                 </div>
-                                <div className="text-left">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-sm font-bold dark:text-white capitalize">{p.name === 'gemini' ? 'Google Gemini' : p.name}</span>
-                                    {p.configured && <span className="px-1.5 py-0.5 bg-green-500/10 text-green-500 text-[8px] font-bold rounded-full uppercase tracking-tighter">已配置</span>}
+
+                                {/* Search at the bottom for advanced filtering only */}
+                                <div className="p-3 border-t border-border-subtle bg-surface-low dark:bg-black/20">
+                                  <div className="relative">
+                                    <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A1A1A1]" />
+                                    <input 
+                                      type="text"
+                                      placeholder="搜索更多模型接口..."
+                                      value={modelSearch}
+                                      onChange={(e) => setModelSearch(e.target.value)}
+                                      className="w-full pl-8 pr-4 py-2 bg-white dark:bg-white/5 border border-border-subtle rounded-xl text-[10px] outline-none dark:text-white transition-all"
+                                    />
                                   </div>
-                                  <div className="text-[10px] text-[#666] dark:text-[#A1A1A1] mt-0.5">{p.model}</div>
                                 </div>
-                              </div>
-                              {selectedModel === p.model && <Check size={16} className="text-black dark:text-white" />}
-                            </button>
-                          ))
-                        ) : (
-                          <>
-                            <button 
-                              onClick={() => setSelectedModel('gemini-2.0-flash')}
-                              className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${selectedModel === 'gemini-2.0-flash' ? 'border-black bg-white dark:border-white dark:bg-white/10' : 'border-transparent bg-white dark:bg-black/20 hover:border-black/10 dark:hover:border-white/10'}`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <Zap size={16} className="text-amber-500" />
-                                <div className="text-left">
-                                  <div className="text-sm font-bold dark:text-white">Gemini 2.0 Flash (默认)</div>
-                                  <div className="text-[10px] text-[#666] dark:text-[#A1A1A1]">速度极快，性能平衡，推荐日常使用</div>
-                                </div>
-                              </div>
-                              {selectedModel === 'gemini-2.0-flash' && <Check size={16} className="text-black dark:text-white" />}
-                            </button>
-                            
-                            <button 
-                              onClick={() => setSelectedModel('gemini-1.5-pro')}
-                              className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${selectedModel === 'gemini-1.5-pro' ? 'border-black bg-white dark:border-white dark:bg-white/10' : 'border-transparent bg-white dark:bg-black/20 hover:border-black/10 dark:hover:border-white/10'}`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <Sparkles size={16} className="text-blue-500" />
-                                <div className="text-left">
-                                  <div className="text-sm font-bold dark:text-white">Gemini 1.5 Pro</div>
-                                  <div className="text-[10px] text-[#666] dark:text-[#A1A1A1]">逻辑推导能力更强，适合复杂深度创作</div>
-                                </div>
-                              </div>
-                              {selectedModel === 'gemini-1.5-pro' && <Check size={16} className="text-black dark:text-white" />}
-                            </button>
-                          </>
-                        )}
+                              </motion.div>
+
+                            </>
+                          )}
+                        </AnimatePresence>
                       </div>
                     </div>
                   </div>
@@ -2445,3 +2494,5 @@ function StyleForm({ initialData, onSave }: { initialData: Partial<StylePreset>;
     </div>
   );
 }
+
+
