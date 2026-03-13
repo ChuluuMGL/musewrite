@@ -35,6 +35,14 @@ export interface GenerationResponse {
  */
 class ApiService {
   private baseUrl = '/api/v1';
+  private apiKey = 'sk_19460aec9b98d695176e10bdbdf43156';
+
+  private get headers() {
+    return {
+      'Content-Type': 'application/json',
+      'X-API-Key': this.apiKey
+    };
+  }
 
   /**
    * 优先尝试调用本地后端 API，如果失败则回退到直接调用 Gemini (保持现状兼容性)
@@ -44,11 +52,7 @@ class ApiService {
       // 1. 尝试连接 MuseWrite 后端
       const response = await fetch(`${this.baseUrl}/generate`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // 后端可能需要 API Key，这里预留
-          'X-API-Key': 'default_key' 
-        },
+        headers: this.headers,
         body: JSON.stringify(params)
       });
 
@@ -113,10 +117,61 @@ class ApiService {
    */
   async getDrafts() {
     try {
-      const response = await fetch(`${this.baseUrl}/drafts`);
+      const response = await fetch(`${this.baseUrl}/drafts`, { headers: this.headers });
       if (response.ok) return await response.json();
     } catch (e) {
       return { success: false, drafts: [] };
+    }
+  }
+
+  /**
+   * 获取可用人设卡/账号
+   */
+  async getAccounts() {
+    try {
+      const response = await fetch(`${this.baseUrl}/accounts`, { headers: this.headers });
+      if (response.ok) return await response.json();
+    } catch (e) {
+      console.error('Failed to fetch accounts:', e);
+    }
+    return { success: false, accounts: [] };
+  }
+
+  /**
+   * 获取可用平台规格
+   */
+  async getPlatforms() {
+    try {
+      const response = await fetch(`${this.baseUrl}/platforms`, { headers: this.headers });
+      if (response.ok) return await response.json();
+    } catch (e) {
+      console.error('Failed to fetch platforms:', e);
+    }
+    return { success: false, platforms: { domestic: [], international: [] } };
+  }
+
+  /**
+   * 获取可用风格列表
+   */
+  async getStyles() {
+    try {
+      const response = await fetch(`${this.baseUrl}/styles`, { headers: this.headers });
+      if (response.ok) return await response.json();
+    } catch (e) {
+      console.error('Failed to fetch styles:', e);
+    }
+    return { success: false, styles: [] };
+  }
+
+  /**
+   * 检查连接状态
+   */
+  async checkConnection() {
+    try {
+      const response = await fetch(`${this.baseUrl}/status`, { headers: this.headers });
+      return response.ok;
+    } catch (e) {
+      return false;
     }
   }
 }

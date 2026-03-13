@@ -75,6 +75,7 @@ type GenerationResult = {
   content: string;
   tags: string[];
   score: number;
+  feedback?: string[];
   wordCount: number;
   imageUrl?: string;
   platformOverrides?: Record<string, { title: string; content: string; tags: string[] }>;
@@ -140,6 +141,7 @@ export default function App() {
   const [setupStep, setSetupStep] = useState(1);
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('musewrite_theme') === 'dark');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isBackendConnected, setIsBackendConnected] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   
   // --- Data State ---
@@ -308,6 +310,79 @@ export default function App() {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // --- Backend Synchronization ---
+  useEffect(() => {
+    const syncWithBackend = async () => {
+      try {
+        const isConnected = await apiService.checkConnection();
+        setIsBackendConnected(isConnected);
+        
+        if (!isConnected) return;
+
+        // Sync Identities (Accounts)
+        const accountsRes = await apiService.getAccounts();
+        if (accountsRes.success && accountsRes.accounts.length > 0) {
+          const backendIdentities = accountsRes.accounts.map((a: any) => ({
+            id: a.id,
+            name: a.name,
+            bio: '后端配置的专业人设',
+            isDefault: a.id === 'stone'
+          }));
+          setIdentities(prev => {
+            // 合并后端与本地（去重）
+            const combined = [...backendIdentities];
+            prev.forEach(p => {
+              if (!combined.find(c => c.id === p.id)) combined.push(p);
+            });
+            return combined;
+          });
+        }
+
+        // Sync History (Drafts)
+        const draftsRes = await apiService.getDrafts();
+        if (draftsRes.success && draftsRes.drafts.length > 0) {
+          const backendHistory = draftsRes.drafts.map((d: any) => ({
+            title: d.title,
+            content: '从后端加载的内容...',
+            tags: [],
+            score: d.score,
+            wordCount: 0,
+            platform: d.platform
+          }));
+          setHistory(prev => {
+            const combined = [...backendHistory];
+            prev.forEach(p => {
+              if (!combined.find(c => c.title === p.title)) combined.push(p);
+            });
+            return combined.slice(0, 20);
+          });
+        }
+
+        // Sync Styles
+        const stylesRes = await apiService.getStyles();
+        if (stylesRes.success && stylesRes.styles.length > 0) {
+          const backendStyles = stylesRes.styles.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            desc: '后端配置的专业风格',
+            iconId: 'default'
+          }));
+          setCustomStyles(prev => {
+            const combined = [...backendStyles];
+            prev.forEach(p => {
+              if (!combined.find(c => c.id === p.id)) combined.push(p);
+            });
+            return combined;
+          });
+        }
+      } catch (error) {
+        console.warn('Backend sync failed, staying in offline mode:', error);
+      }
+    };
+    
+    syncWithBackend();
   }, []);
 
   // --- Derived ---
@@ -637,26 +712,26 @@ export default function App() {
 
   // 1. Setup Flow
   const renderSetup = () => (
-    <div className="min-h-screen bg-white dark:bg-black flex flex-col items-center justify-center p-6 transition-colors duration-300">
+    <div className="min-h-screen bg-[var(--background)] flex flex-col items-center justify-center p-6 transition-colors duration-300">
       <div className="max-w-[560px] w-full space-y-12">
         <header className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 text-black dark:text-white mb-4">
             <PenTool size={24} strokeWidth={2.5} />
             <h1 className="text-2xl font-bold tracking-tight">MuseWrite</h1>
           </div>
-          <p className="text-[#666] dark:text-[#A1A1A1] text-sm">让创作变得简单而有趣</p>
+          <p className="text-[#666] dark:text-[#8E8E93] text-sm">让创作变得简单而有趣</p>
         </header>
 
         {/* Progress Bar */}
         <div className="space-y-4">
-          <div className="h-1 w-full bg-[#F0F0F0] rounded-full overflow-hidden">
+          <div className="h-1 w-full bg-[#F0F0F0] dark:bg-white/5 rounded-full overflow-hidden">
             <motion.div 
-              className="h-full bg-black" 
+              className="h-full bg-black dark:bg-white/80" 
               initial={{ width: '0%' }}
               animate={{ width: `${(setupStep / 4) * 100}%` }}
             />
           </div>
-          <div className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] text-center">Step {setupStep}/4</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-[#636366] text-center">Step {setupStep}/4</div>
         </div>
 
         <AnimatePresence mode="wait">
@@ -685,11 +760,11 @@ export default function App() {
           <button 
             key={s.id} 
             onClick={() => setSelectedStyleId(s.id)}
-            className={`p-6 rounded-2xl border text-left transition-all ${selectedStyleId === s.id ? 'border-black bg-black text-white' : 'border-[#EDEDED] hover:border-black'}`}
+            className={`p-6 rounded-2xl border text-left transition-all ${selectedStyleId === s.id ? 'border-accent-blue bg-accent-blue/10 dark:bg-accent-blue/20 shadow-lg scale-[1.02]' : 'border-border-subtle bg-surface-low hover:border-accent-blue/30 dark:text-white'}`}
           >
-            <div className={`mb-2 ${selectedStyleId === s.id ? 'text-white' : 'text-black'}`}>{STYLE_ICONS[s.iconId] || STYLE_ICONS.default}</div>
-            <div className="font-bold mb-1">{s.name}</div>
-            <div className={`text-[11px] ${selectedStyleId === s.id ? 'text-white/60' : 'text-[#666]'}`}>{s.desc}</div>
+            <div className={`mb-2 ${selectedStyleId === s.id ? 'text-accent-blue' : 'text-[#666] dark:text-[#A1A1A6]'}`}>{STYLE_ICONS[s.iconId] || STYLE_ICONS.default}</div>
+            <div className={`font-bold mb-1 ${selectedStyleId === s.id ? 'text-accent-blue' : ''}`}>{s.name}</div>
+            <div className={`text-[11px] ${selectedStyleId === s.id ? 'text-accent-blue/80' : 'text-[#666] dark:text-[#8E8E93]'}`}>{s.desc}</div>
           </button>
                 ))}
               </div>
@@ -707,11 +782,11 @@ export default function App() {
                     <button 
                       key={p.id} 
                       onClick={() => setSelectedPlatforms(prev => isSelected ? prev.filter(x => x !== p.id) : [...prev, p.id])}
-                      className={`p-6 rounded-2xl border flex flex-col items-center gap-3 transition-all ${isSelected ? 'border-black bg-black text-white' : 'border-[#EDEDED] hover:border-black'}`}
+                      className={`p-6 rounded-2xl border flex flex-col items-center gap-3 transition-all ${isSelected ? 'border-accent-blue bg-accent-blue/10 dark:bg-accent-blue/20 shadow-lg scale-[1.02]' : 'border-border-subtle bg-surface-low hover:border-accent-blue/30 dark:text-white'}`}
                     >
-                      <div className={isSelected ? 'text-white' : 'text-black'}>{PLATFORM_ICONS[p.iconId]}</div>
-                      <div className="text-xs font-bold">{p.name}</div>
-                      {isSelected ? <Check size={14} /> : <div className="w-3.5 h-3.5 border border-[#EDEDED] rounded" />}
+                      <div className={isSelected ? 'text-accent-blue' : 'text-[#666] dark:text-[#A1A1A6]'}>{PLATFORM_ICONS[p.iconId]}</div>
+                      <div className={`text-xs font-bold ${isSelected ? 'text-accent-blue' : ''}`}>{p.name}</div>
+                      {isSelected ? <Check size={14} className="text-accent-blue" /> : <div className="w-3.5 h-3.5 border border-border-subtle rounded group-hover:border-accent-blue/30" />}
                     </button>
                   );
                 })}
@@ -741,7 +816,7 @@ export default function App() {
               </div>
               
               <div className="grid grid-cols-1 gap-4 max-w-sm mx-auto">
-                <div className="p-4 bg-[#F7F7F7] dark:bg-white/5 rounded-2xl border border-[#EDEDED] dark:border-white/10 flex items-center justify-between">
+                <div className="p-4 bg-surface-low border border-border-subtle rounded-2xl flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white dark:bg-black rounded-xl flex items-center justify-center border border-[#EDEDED] dark:border-white/10">
                       <UserCircle size={20} className="text-[#A1A1A1]" />
@@ -754,7 +829,7 @@ export default function App() {
                   <Check size={16} className="text-emerald-500" />
                 </div>
                 
-                <div className="p-4 bg-[#F7F7F7] dark:bg-white/5 rounded-2xl border border-[#EDEDED] dark:border-white/10 flex items-center justify-between">
+                <div className="p-4 bg-surface-low border border-border-subtle rounded-2xl flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-white dark:bg-black rounded-xl flex items-center justify-center border border-[#EDEDED] dark:border-white/10">
                       <Palette size={20} className="text-[#A1A1A1]" />
@@ -786,47 +861,47 @@ export default function App() {
 
   // 2. Main Integrated Layout
   const renderMainLayout = () => (
-    <div className="flex h-screen bg-white dark:bg-black overflow-hidden transition-colors duration-300">
+    <div className="flex h-screen bg-[var(--background)] overflow-hidden transition-colors duration-300">
       {/* Rail Navigation (Far Left) */}
-      <aside className="w-[56px] bg-[#F7F7F7] dark:bg-white/5 border-r border-[#EDEDED] dark:border-white/10 flex flex-col items-center py-5 gap-5 shrink-0 z-20">
+      <aside className="w-[56px] bg-[var(--surface-low)] border-r border-border-subtle flex flex-col items-center py-5 gap-5 shrink-0 z-20">
         <div 
           onClick={() => handleTabClick('selection')}
-          className="w-8 h-8 rounded-lg bg-black dark:bg-white text-white dark:text-black flex items-center justify-center shadow-sm cursor-pointer hover:scale-105 transition-transform"
+          className="w-8 h-8 rounded-lg bg-brand text-white dark:text-black flex items-center justify-center shadow-md cursor-pointer hover:scale-105 transition-transform"
         >
           <PenTool size={16} strokeWidth={2.5} />
         </div>
         <nav className="flex flex-col gap-1">
           <button 
             onClick={() => handleTabClick('selection')}
-            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'selection' && isSidebarOpen ? 'bg-white dark:bg-white/10 text-black dark:text-white shadow-sm border border-black/5' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
+            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'selection' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
             title="创作设置"
           >
             <Layout size={18} />
           </button>
           <button 
             onClick={() => handleTabClick('history')}
-            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'history' && isSidebarOpen ? 'bg-white dark:bg-white/10 text-black dark:text-white shadow-sm border border-black/5' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
+            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'history' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
             title="历史记录"
           >
             <History size={18} />
           </button>
           <button 
             onClick={() => handleTabClick('identity')}
-            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'identity' && isSidebarOpen ? 'bg-white dark:bg-white/10 text-black dark:text-white shadow-sm border border-black/5' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
+            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'identity' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
             title="人设管理"
           >
             <UserCircle size={18} />
           </button>
           <button 
             onClick={() => handleTabClick('style')}
-            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'style' && isSidebarOpen ? 'bg-white dark:bg-white/10 text-black dark:text-white shadow-sm border border-black/5' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
+            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'style' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
             title="风格管理"
           >
             <Palette size={18} />
           </button>
           <button 
             onClick={() => handleTabClick('skills')}
-            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'skills' && isSidebarOpen ? 'bg-white dark:bg-white/10 text-black dark:text-white shadow-sm border border-black/5' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
+            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'skills' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
             title="写作工具箱"
           >
             <Zap size={18} />
@@ -835,7 +910,7 @@ export default function App() {
         <div className="mt-auto flex flex-col gap-3">
           <button 
             onClick={() => handleTabClick('settings')}
-            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'settings' && isSidebarOpen ? 'bg-white dark:bg-white/10 text-black dark:text-white shadow-sm border border-black/5' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
+            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'settings' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
             title="设置"
           >
             <Settings size={18} />
@@ -854,10 +929,10 @@ export default function App() {
         {isSidebarOpen && (
           <motion.aside 
             initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 240, opacity: 1 }}
+            animate={{ width: 320, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="border-r border-[#EDEDED] dark:border-white/10 bg-[#FBFBFB] dark:bg-black flex flex-col overflow-hidden shrink-0 z-10"
+            className="flex flex-col bg-[var(--surface-mid)] border-r border-border-subtle overflow-hidden relative"
           >
             <div className="p-6 flex-1 overflow-y-auto custom-scrollbar space-y-10 min-w-[240px]">
               <div className="flex items-center justify-between mb-2">
@@ -880,7 +955,7 @@ export default function App() {
                       {identities.map(id => (
                         <div 
                           key={id.id}
-                          className={`group relative w-full p-3 border rounded-xl flex items-center justify-between transition-all ${selectedIdentityId === id.id ? 'border-black bg-white shadow-sm' : 'border-transparent hover:bg-[#F0F0F0] text-[#666]'}`}
+                          className={`group relative w-full p-3 border rounded-xl flex items-center justify-between transition-all ${selectedIdentityId === id.id ? 'border-black bg-white dark:bg-white/10 dark:border-white shadow-sm' : 'border-transparent hover:bg-[#F0F0F0] dark:hover:bg-white/5 text-[#666] dark:text-[#A1A1A1]'}`}
                         >
                           <span className="text-sm font-bold cursor-pointer flex-1" onClick={() => setSelectedIdentityId(id.id)}>{id.name}</span>
                           <div className="flex items-center gap-2">
@@ -902,11 +977,11 @@ export default function App() {
                       {allStyles.map(s => (
                         <div 
                           key={s.id}
-                          className={`group relative w-full p-3 border rounded-xl flex items-center justify-between transition-all ${selectedStyleId === s.id ? 'border-black bg-white shadow-sm' : 'border-transparent hover:bg-[#F0F0F0] text-[#666]'}`}
+                          className={`group relative w-full p-3 border rounded-xl flex items-center justify-between transition-all ${selectedStyleId === s.id ? 'border-black bg-white dark:bg-white/10 dark:border-white shadow-sm' : 'border-transparent hover:bg-[#F0F0F0] dark:hover:bg-white/5 text-[#666] dark:text-[#A1A1A1]'}`}
                         >
                           <div className="flex items-center gap-2 cursor-pointer flex-1" onClick={() => setSelectedStyleId(s.id)}>
-                            <span className={`text-sm ${selectedStyleId === s.id ? 'text-black' : 'text-[#A1A1A1]'}`}>{STYLE_ICONS[s.iconId] || STYLE_ICONS.default}</span>
-                            <span className="text-sm font-bold">{s.name}</span>
+                            <span className={`text-sm ${selectedStyleId === s.id ? 'text-black dark:text-white' : 'text-[#A1A1A1]'}`}>{STYLE_ICONS[s.iconId] || STYLE_ICONS.default}</span>
+                            <span className="text-sm font-bold dark:text-white">{s.name}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             {selectedStyleId === s.id && <Check size={14} />}
@@ -995,7 +1070,7 @@ export default function App() {
                   <div className="flex items-center justify-end">
                     <button 
                       onClick={() => { setEditingIdentity(null); setMainView('identity-form'); }}
-                      className="p-1 hover:bg-[#F0F0F0] rounded-md text-black transition-colors"
+                      className="p-1 hover:bg-[#F0F0F0] dark:hover:bg-white/10 rounded-md text-black dark:text-white transition-colors"
                     >
                       <Plus size={16} />
                     </button>
@@ -1004,13 +1079,13 @@ export default function App() {
                     {identities.map(id => (
                       <div 
                         key={id.id}
-                        className={`group w-full p-3 border rounded-xl flex flex-col gap-2 transition-all ${selectedIdentityId === id.id ? 'border-black bg-white shadow-sm' : 'border-transparent hover:bg-[#F0F0F0] text-[#666]'}`}
+                        className={`group w-full p-3 border rounded-xl flex flex-col gap-2 transition-all ${selectedIdentityId === id.id ? 'border-black bg-white dark:bg-white/10 dark:border-white shadow-sm' : 'border-transparent hover:bg-[#F0F0F0] dark:hover:bg-white/5 text-[#666] dark:text-[#A1A1A1]'}`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold cursor-pointer" onClick={() => setSelectedIdentityId(id.id)}>{id.name}</span>
+                          <span className="text-sm font-bold cursor-pointer dark:text-white" onClick={() => setSelectedIdentityId(id.id)}>{id.name}</span>
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={(e) => { e.stopPropagation(); setEditingIdentity(id); setMainView('identity-form'); }} className="p-1 hover:bg-black/5 rounded text-[#666] hover:text-black"><Edit3 size={14} /></button>
-                            <button onClick={(e) => { e.stopPropagation(); handleDeleteIdentity(id.id); }} className="p-1 hover:bg-red-50 rounded text-[#666] hover:text-red-500"><Trash2 size={14} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); setEditingIdentity(id); setMainView('identity-form'); }} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-[#666] dark:text-[#A1A1A1] hover:text-black dark:hover:text-white"><Edit3 size={14} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); handleDeleteIdentity(id.id); }} className="p-1 hover:bg-red-50 rounded text-[#666] dark:text-[#A1A1A1] hover:text-red-500"><Trash2 size={14} /></button>
                           </div>
                         </div>
                         <p className="text-[10px] line-clamp-2 text-[#A1A1A1]">{id.bio}</p>
@@ -1025,7 +1100,7 @@ export default function App() {
                   <div className="flex items-center justify-end">
                     <button 
                       onClick={() => { setEditingStyle(null); setMainView('style-form'); }}
-                      className="p-1 hover:bg-[#F0F0F0] rounded-md text-black transition-colors"
+                      className="p-1 hover:bg-[#F0F0F0] dark:hover:bg-white/10 rounded-md text-black dark:text-white transition-colors"
                     >
                       <Plus size={16} />
                     </button>
@@ -1102,7 +1177,7 @@ export default function App() {
                     <SettingsNavItem label="API 设置" active={mainView === 'api-settings'} onClick={() => setMainView('api-settings')} icon={<Zap size={16} />} />
                     <SettingsNavItem label="平台管理" active={mainView === 'platform-settings'} onClick={() => setMainView('platform-settings')} icon={<Globe size={16} />} />
                     <SettingsNavItem label="数据存储" active={mainView === 'data-settings'} onClick={() => setMainView('data-settings')} icon={<Download size={16} />} />
-                    <div className="h-px bg-[#EDEDED] dark:bg-white/10 my-4" />
+                    <div className="h-px bg-border-subtle my-4" />
                     <SettingsNavItem label="外观" active={mainView === 'appearance-settings'} onClick={() => setMainView('appearance-settings')} icon={<Layout size={16} />} />
                     <SettingsNavItem label="关于" active={mainView === 'about'} onClick={() => setMainView('about')} icon={<MessageSquare size={16} />} />
                   </nav>
@@ -1114,7 +1189,7 @@ export default function App() {
       </AnimatePresence>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 bg-white dark:bg-black relative transition-colors duration-300">
+      <main className="flex-1 flex flex-col min-w-0 bg-[var(--background)] relative transition-colors duration-300">
         {/* Sidebar Toggle Button */}
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -1123,9 +1198,9 @@ export default function App() {
           {isSidebarOpen ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
         </button>
 
-        <header className="h-14 border-b border-[#EDEDED] dark:border-white/10 px-6 flex items-center justify-between shrink-0 bg-white dark:bg-black transition-colors duration-300">
+        <header className="h-14 border-b border-border-subtle px-6 flex items-center justify-between shrink-0 bg-[var(--background)]/80 backdrop-blur-md sticky top-0 z-20 transition-colors duration-300">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">MuseWrite</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-[#666]">MuseWrite</span>
             <ChevronRight size={10} className="text-[#D1D1D1]" />
             <span className="text-[10px] font-medium text-[#666] dark:text-[#A1A1A1]">
               {mainView === 'editor' && '新创作'}
@@ -1135,8 +1210,11 @@ export default function App() {
               {mainView === 'result' && '生成结果'}
             </span>
           </div>
-          <div className="flex items-center gap-2 relative">
-            {/* Header buttons removed per user request */}
+          <div className="flex items-center gap-4 relative">
+            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-bold border ${isBackendConnected ? 'bg-green-500/10 text-green-600 border-green-500/20' : 'bg-red-500/10 text-red-600 border-red-500/20'}`}>
+              <div className={`w-1.5 h-1.5 rounded-full ${isBackendConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+              {isBackendConnected ? '已连通 MuseServer' : 'Server 未连接'}
+            </div>
           </div>
         </header>
 
@@ -1304,9 +1382,9 @@ export default function App() {
                   </div>
                   
                   <div className="space-y-8">
-                    <div className="p-8 border border-[#EDEDED] dark:border-white/10 rounded-[32px] bg-white dark:bg-white/5 shadow-sm space-y-6">
+                    <div className="p-8 border border-border-subtle rounded-[32px] bg-surface-mid shadow-lg space-y-6">
                       <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">核心信息提取</label>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-white">核心信息提取</label>
                         {isExtracting ? (
                           <div className="py-20 flex flex-col items-center justify-center gap-4">
                             <Loader2 size={32} className="animate-spin text-black dark:text-white" />
@@ -1349,8 +1427,8 @@ export default function App() {
               >
                 <div className="max-w-[640px] mx-auto space-y-12">
                   <div className="flex items-center gap-4">
-                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] rounded-full"><ChevronLeft size={20} /></button>
-                    <h2 className="text-2xl font-bold tracking-tight">{editingIdentity ? '编辑人设' : '新建人设'}</h2>
+                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] rounded-full dark:text-white"><ChevronLeft size={20} /></button>
+                    <h2 className="text-2xl font-bold tracking-tight dark:text-white">{editingIdentity ? '编辑人设' : '新建人设'}</h2>
                   </div>
                   <IdentityForm 
                     initialData={editingIdentity || { name: '', bio: '' }} 
@@ -1368,8 +1446,8 @@ export default function App() {
               >
                 <div className="max-w-[640px] mx-auto space-y-12">
                   <div className="flex items-center gap-4">
-                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] rounded-full"><ChevronLeft size={20} /></button>
-                    <h2 className="text-2xl font-bold tracking-tight">{editingStyle ? '编辑风格' : '新建风格'}</h2>
+                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] rounded-full dark:text-white"><ChevronLeft size={20} /></button>
+                    <h2 className="text-2xl font-bold tracking-tight dark:text-white">{editingStyle ? '编辑风格' : '新建风格'}</h2>
                   </div>
                   <StyleForm 
                     initialData={editingStyle || { name: '', desc: '', iconId: 'default' }} 
@@ -1386,12 +1464,12 @@ export default function App() {
               >
                 <div className="max-w-[640px] mx-auto space-y-12">
                   <div className="flex items-center gap-4">
-                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-full"><ChevronLeft size={20} /></button>
-                    <h2 className="text-2xl font-bold tracking-tight">API 设置</h2>
+                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-full dark:text-white"><ChevronLeft size={20} /></button>
+                    <h2 className="text-2xl font-bold tracking-tight dark:text-white">API 设置</h2>
                   </div>
                   <div className="p-8 bg-[#F7F7F7] dark:bg-white/5 rounded-3xl space-y-6">
                     <div className="space-y-2">
-                      <h3 className="text-sm font-bold">Gemini API Key</h3>
+                      <h3 className="text-sm font-bold dark:text-white">Gemini API Key</h3>
                       <p className="text-xs text-[#666] dark:text-[#A1A1A1]">当前使用平台托管的 API Key，无需手动配置。</p>
                       <div className="flex items-center gap-2 mt-4">
                         <div className="flex-1 px-4 py-2 bg-white dark:bg-black/20 border border-[#EDEDED] dark:border-white/10 rounded-lg font-mono text-xs text-[#A1A1A1]">
@@ -1406,8 +1484,19 @@ export default function App() {
                       </div>
                     </div>
                     <div className="h-px bg-[#EDEDED] dark:bg-white/10" />
+                    <div className="space-y-4">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-white">当前后端 API 服务</label>
+                        <div className="flex items-center gap-3 p-4 bg-white dark:bg-black/20 border border-[#EDEDED] dark:border-white/10 rounded-2xl">
+                          <div className={`w-2 h-2 rounded-full ${isBackendConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                          <div className="flex-1">
+                            <div className="text-sm font-bold dark:text-white">Local MuseWrite Server</div>
+                            <div className="text-[10px] text-[#666] dark:text-[#A1A1A1]">已连接到本地 MuseWrite Server，提供更强大的 AI 能力</div>
+                          </div>
+                        </div>
+                      </div>
+                    <div className="h-px bg-[#EDEDED] dark:bg-white/10" />
                     <div className="space-y-2">
-                      <h3 className="text-sm font-bold">模型选择</h3>
+                      <h3 className="text-sm font-bold dark:text-white">模型选择</h3>
                       <div className="p-4 bg-white dark:bg-black/20 border border-black dark:border-white rounded-xl flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <Zap size={16} className="text-amber-500" />
@@ -1431,8 +1520,8 @@ export default function App() {
               >
                 <div className="max-w-[800px] mx-auto space-y-12">
                   <div className="flex items-center gap-4">
-                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-full"><ChevronLeft size={20} /></button>
-                    <h2 className="text-2xl font-bold tracking-tight">平台管理</h2>
+                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-full dark:text-white"><ChevronLeft size={20} /></button>
+                    <h2 className="text-2xl font-bold tracking-tight dark:text-white">平台管理</h2>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {platformConfigs.map(p => (
@@ -1441,11 +1530,11 @@ export default function App() {
                           <div className="w-10 h-10 rounded-xl bg-white dark:bg-black/20 border border-[#EDEDED] dark:border-white/10 flex items-center justify-center text-black dark:text-white shadow-sm">
                             {PLATFORM_ICONS[p.iconId]}
                           </div>
-                          <h3 className="font-bold">{p.name} 规范</h3>
+                          <h3 className="font-bold dark:text-white">{p.name} 规范</h3>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">标题字数</label>
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-white">标题字数</label>
                             <input 
                               type="number" 
                               value={p.specs.titleLimit} 
@@ -1457,7 +1546,7 @@ export default function App() {
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">正文字数</label>
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-white">正文字数</label>
                             <input 
                               type="number" 
                               value={p.specs.contentLimit} 
@@ -1469,7 +1558,7 @@ export default function App() {
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">话题个数</label>
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-white">话题个数</label>
                             <input 
                               type="number" 
                               value={p.specs.tagLimit} 
@@ -1481,7 +1570,7 @@ export default function App() {
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">配图比例</label>
+                            <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-white">配图比例</label>
                             <select 
                               value={p.specs.imageRatio} 
                               onChange={(e) => {
@@ -1512,13 +1601,13 @@ export default function App() {
               >
                 <div className="max-w-[640px] mx-auto space-y-12">
                   <div className="flex items-center gap-4">
-                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-full"><ChevronLeft size={20} /></button>
-                    <h2 className="text-2xl font-bold tracking-tight">数据存储</h2>
+                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-full dark:text-white"><ChevronLeft size={20} /></button>
+                    <h2 className="text-2xl font-bold tracking-tight dark:text-white">数据存储</h2>
                   </div>
                   <div className="space-y-6">
                     <div className="p-8 bg-[#F7F7F7] dark:bg-white/5 rounded-3xl space-y-6">
                       <div className="space-y-2">
-                        <h3 className="text-sm font-bold">本地备份</h3>
+                        <h3 className="text-sm font-bold dark:text-white">本地备份</h3>
                         <p className="text-xs text-[#666] dark:text-[#A1A1A1]">导出所有配置、人设、风格和历史记录到本地 JSON 文件。</p>
                         <button 
                           onClick={handleExportData}
@@ -1529,7 +1618,7 @@ export default function App() {
                       </div>
                       <div className="h-px bg-[#EDEDED] dark:bg-white/10" />
                       <div className="space-y-2">
-                        <h3 className="text-sm font-bold">恢复数据</h3>
+                        <h3 className="text-sm font-bold dark:text-white">恢复数据</h3>
                         <p className="text-xs text-[#666] dark:text-[#A1A1A1]">从备份文件恢复所有数据。注意：这会覆盖当前所有数据。</p>
                         <label className="mt-4 inline-flex items-center gap-2 px-6 py-3 border border-[#EDEDED] dark:border-white/10 rounded-xl font-bold text-sm hover:border-black dark:hover:border-white transition-all cursor-pointer">
                           <Upload size={16} /> 导入备份文件
@@ -1549,13 +1638,13 @@ export default function App() {
               >
                 <div className="max-w-[640px] mx-auto space-y-12">
                   <div className="flex items-center gap-4">
-                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-full"><ChevronLeft size={20} /></button>
-                    <h2 className="text-2xl font-bold tracking-tight">外观设置</h2>
+                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-full dark:text-white"><ChevronLeft size={20} /></button>
+                    <h2 className="text-2xl font-bold tracking-tight dark:text-white">外观设置</h2>
                   </div>
                   <div className="p-8 bg-[#F7F7F7] dark:bg-white/5 rounded-3xl space-y-8">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-sm font-bold">深色模式</h3>
+                        <h3 className="text-sm font-bold dark:text-white">深色模式</h3>
                         <p className="text-xs text-[#666] dark:text-[#A1A1A1]">切换应用程序的视觉主题</p>
                       </div>
                       <button 
@@ -1581,8 +1670,8 @@ export default function App() {
               >
                 <div className="max-w-[640px] mx-auto space-y-12">
                   <div className="flex items-center gap-4">
-                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-full"><ChevronLeft size={20} /></button>
-                    <h2 className="text-2xl font-bold tracking-tight">关于 MuseWrite</h2>
+                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-full dark:text-white"><ChevronLeft size={20} /></button>
+                    <h2 className="text-2xl font-bold tracking-tight dark:text-white">关于 MuseWrite</h2>
                   </div>
                   <div className="space-y-8">
                     <div className="flex flex-col items-center text-center space-y-4 py-12">
@@ -1634,10 +1723,10 @@ export default function App() {
                   <div className="flex border-b border-[#EDEDED] dark:border-white/10 gap-8">
                     <button 
                       onClick={() => setActivePreviewTab('master')}
-                      className={`pb-4 text-sm font-bold transition-all relative ${activePreviewTab === 'master' ? 'text-black dark:text-white' : 'text-[#A1A1A1] hover:text-[#666]'}`}
+                      className={`pb-4 text-sm font-bold transition-all relative ${activePreviewTab === 'master' ? 'text-brand' : 'text-[#A1A1A1] hover:text-[#666]'}`}
                     >
                       母版内容
-                      {activePreviewTab === 'master' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black dark:bg-white" />}
+                      {activePreviewTab === 'master' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand" />}
                     </button>
                     {selectedPlatforms.map(pid => {
                       const p = platformConfigs.find(x => x.id === pid);
@@ -1645,11 +1734,11 @@ export default function App() {
                         <button 
                           key={pid} 
                           onClick={() => setActivePreviewTab(pid)}
-                          className={`pb-4 text-sm font-bold transition-all relative flex items-center gap-2 ${activePreviewTab === pid ? 'text-black dark:text-white' : 'text-[#A1A1A1] hover:text-[#666]'}`}
+                          className={`pb-4 text-sm font-bold transition-all relative flex items-center gap-2 ${activePreviewTab === pid ? 'text-brand' : 'text-[#A1A1A1] hover:text-[#666]'}`}
                         >
-                          {PLATFORM_ICONS[pid] || p?.iconId && PLATFORM_ICONS[p.iconId]}
+                          {PLATFORM_ICONS[pid] || (p?.iconId && PLATFORM_ICONS[p.iconId])}
                           {p?.name}
-                          {activePreviewTab === pid && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black dark:bg-white" />}
+                          {activePreviewTab === pid && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand" />}
                         </button>
                       );
                     })}
@@ -1659,20 +1748,20 @@ export default function App() {
                   {editableResult && (
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
                       <div className="lg:col-span-7 space-y-8">
-                        <div className="p-8 border border-[#EDEDED] dark:border-white/10 rounded-[32px] space-y-8 shadow-sm bg-white dark:bg-white/5 relative overflow-hidden">
+                        <div className="p-8 border border-border-subtle rounded-[32px] space-y-8 shadow-xl bg-surface-mid relative overflow-hidden">
                           {activePreviewTab !== 'master' && !editableResult.platformOverrides?.[activePreviewTab] && (
-                            <div className="absolute inset-0 z-10 bg-white/80 dark:bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-12 text-center space-y-6">
-                              <div className="w-16 h-16 bg-black dark:bg-white rounded-2xl flex items-center justify-center shadow-xl">
-                                <Zap size={32} className="text-white dark:text-black" />
+                            <div className="absolute inset-0 z-10 bg-[var(--background)]/90 backdrop-blur-md flex flex-col items-center justify-center p-12 text-center space-y-6">
+                              <div className="w-16 h-16 bg-brand text-white dark:text-black rounded-2xl flex items-center justify-center shadow-2xl">
+                                <Zap size={32} />
                               </div>
                               <div className="space-y-2">
                                 <h3 className="text-xl font-bold dark:text-white">适配 {platformConfigs.find(p => p.id === activePreviewTab)?.name}</h3>
-                                <p className="text-sm text-[#666] dark:text-[#A1A1A1]">点击下方按钮，AI 将根据平台规范自动优化内容长度和表达方式。</p>
+                                <p className="text-sm text-[#666] dark:text-[#A1A1A6]">点击下方按钮，AI 将根据平台规范自动优化内容长度和表达方式。</p>
                               </div>
                               <button 
                                 onClick={() => handleGenerateForPlatform(activePreviewTab)}
                                 disabled={isGeneratingPlatform[activePreviewTab]}
-                                className="px-8 py-3 bg-black dark:bg-white text-white dark:text-black rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-all disabled:opacity-50"
+                                className="px-8 py-3 bg-brand text-white dark:text-black rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-all shadow-lg active:scale-95 disabled:opacity-50"
                               >
                                 {isGeneratingPlatform[activePreviewTab] ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
                                 {isGeneratingPlatform[activePreviewTab] ? '正在适配...' : '立即适配'}
@@ -1864,6 +1953,36 @@ export default function App() {
 
                       <div className="lg:col-span-5 space-y-8">
                         <div className="sticky top-12 space-y-8">
+                          {/* Quality Analysis */}
+                          <div className="p-6 rounded-[32px] bg-gradient-to-br from-[#FAFAFA] to-[#F0F0F0] dark:from-white/5 dark:to-white/[0.02] border border-white dark:border-white/10 shadow-xl space-y-6">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-xs font-bold uppercase tracking-widest text-[#666] dark:text-[#A1A1A1]">智能质量检测</h4>
+                              <div className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${editableResult.score >= 80 ? 'bg-green-500/10 text-green-600' : 'bg-amber-500/10 text-amber-600'}`}>
+                                {editableResult.score >= 80 ? '优质' : '良好'}
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-end gap-2">
+                              <span className="text-5xl font-black tracking-tighter dark:text-white">{editableResult.score}</span>
+                              <span className="text-sm font-bold text-[#A1A1A1] mb-2">/ 100</span>
+                            </div>
+
+                            <div className="space-y-3">
+                              {(editableResult.feedback || ['表达清晰', '重点突出', '符合人设']).map((item, i) => (
+                                <div key={i} className="flex items-center gap-2 text-xs text-[#666] dark:text-[#E0E0E0]">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                  {item}
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="pt-4 border-t border-black/5 dark:border-white/5">
+                              <button className="w-full py-2.5 rounded-xl bg-white dark:bg-white/5 text-[10px] font-bold text-black dark:text-white border border-[#EDEDED] dark:border-white/10 hover:border-black dark:hover:border-white transition-all">
+                                重新进行深度质量审计
+                              </button>
+                            </div>
+                          </div>
+
                           <div className="space-y-4">
                             <h4 className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">配图预览</h4>
                             <div className="grid grid-cols-1 gap-4">
@@ -2047,7 +2166,7 @@ function SettingsNavItem({ label, active = false, onClick, icon }: { label: stri
   return (
     <button 
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${active ? 'bg-white text-black shadow-sm border border-black/5' : 'text-[#A1A1A1] hover:text-black hover:bg-[#F0F0F0]'}`}
+      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${active ? 'bg-white text-black dark:bg-white/10 dark:text-white shadow-sm border border-black/5 dark:border-white/5' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
     >
       {icon}
       {label}
@@ -2059,13 +2178,13 @@ function SettingsCard({ title, desc, onClick }: { title: string; desc: string; o
   return (
     <div 
       onClick={onClick}
-      className="p-6 border border-[#EDEDED] rounded-2xl flex items-center justify-between cursor-pointer hover:border-black transition-colors group"
+      className="p-6 border border-[#EDEDED] dark:border-white/10 rounded-2xl flex items-center justify-between cursor-pointer hover:border-black dark:hover:border-white transition-colors group"
     >
       <div>
-        <div className="font-bold mb-1">{title}</div>
-        <div className="text-xs text-[#666]">{desc}</div>
+        <div className="font-bold mb-1 dark:text-white">{title}</div>
+        <div className="text-xs text-[#666] dark:text-[#A1A1A1]">{desc}</div>
       </div>
-      <ChevronRight size={18} className="text-[#D1D1D1] group-hover:text-black transition-colors" />
+      <ChevronRight size={18} className="text-[#D1D1D1] group-hover:text-black dark:group-hover:text-white transition-colors" />
     </div>
   );
 }
@@ -2083,7 +2202,7 @@ function IdentityForm({ initialData, onSave, onImport }: { initialData: Partial<
             type="text" 
             value={name} 
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-[#EDEDED] outline-none focus:border-black transition-colors" 
+            className="w-full px-4 py-3 rounded-xl border border-[#EDEDED] dark:border-white/10 dark:bg-black/20 dark:text-white outline-none focus:border-black dark:focus:border-white transition-colors" 
             placeholder="例如：周沫"
           />
         </div>
@@ -2099,7 +2218,7 @@ function IdentityForm({ initialData, onSave, onImport }: { initialData: Partial<
             rows={10} 
             value={bio} 
             onChange={(e) => setBio(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-[#EDEDED] outline-none focus:border-black transition-colors resize-none text-sm leading-relaxed" 
+            className="w-full px-4 py-3 rounded-xl border border-[#EDEDED] dark:border-white/10 dark:bg-black/20 dark:text-white outline-none focus:border-black dark:focus:border-white transition-colors resize-none text-sm leading-relaxed" 
             placeholder="描述一下这个人是谁，或者粘贴一些他的作品作为学习数据..."
           />
         </div>
@@ -2107,7 +2226,7 @@ function IdentityForm({ initialData, onSave, onImport }: { initialData: Partial<
       <button 
         onClick={() => onSave({ name, bio })}
         disabled={!name || !bio}
-        className="w-full py-4 bg-black text-white rounded-xl font-bold hover:bg-[#333] transition-all disabled:opacity-20"
+        className="w-full py-4 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:bg-[#333] dark:hover:bg-[#E0E0E0] transition-all disabled:opacity-20"
       >
         保存人设
       </button>
@@ -2141,7 +2260,7 @@ function StyleForm({ initialData, onSave }: { initialData: Partial<StylePreset>;
               <button
                 key={opt.id}
                 onClick={() => setIconId(opt.id)}
-                className={`p-3 rounded-xl border transition-all ${iconId === opt.id ? 'border-black bg-black text-white' : 'border-[#EDEDED] hover:border-black bg-white'}`}
+                className={`p-3 rounded-xl border transition-all ${iconId === opt.id ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black' : 'border-[#EDEDED] dark:border-white/10 hover:border-black dark:hover:border-white bg-white dark:bg-white/5 dark:text-white'}`}
               >
                 {opt.icon}
               </button>
@@ -2154,7 +2273,7 @@ function StyleForm({ initialData, onSave }: { initialData: Partial<StylePreset>;
             type="text" 
             value={name} 
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-[#EDEDED] outline-none focus:border-black transition-colors" 
+            className="w-full px-4 py-3 rounded-xl border border-[#EDEDED] dark:border-white/10 dark:bg-black/20 dark:text-white outline-none focus:border-black dark:focus:border-white transition-colors" 
             placeholder="例如：犀利"
           />
         </div>
@@ -2164,7 +2283,7 @@ function StyleForm({ initialData, onSave }: { initialData: Partial<StylePreset>;
             rows={4} 
             value={desc} 
             onChange={(e) => setDesc(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-[#EDEDED] outline-none focus:border-black transition-colors resize-none text-sm leading-relaxed" 
+            className="w-full px-4 py-3 rounded-xl border border-[#EDEDED] dark:border-white/10 dark:bg-black/20 dark:text-white outline-none focus:border-black dark:focus:border-white transition-colors resize-none text-sm leading-relaxed" 
             placeholder="描述这种风格的特点，例如：语言简练，多用反问句..."
           />
         </div>
@@ -2172,7 +2291,7 @@ function StyleForm({ initialData, onSave }: { initialData: Partial<StylePreset>;
       <button 
         onClick={() => onSave({ name, desc, iconId })}
         disabled={!name || !desc}
-        className="w-full py-4 bg-black text-white rounded-xl font-bold hover:bg-[#333] transition-all disabled:opacity-20"
+        className="w-full py-4 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:bg-[#333] dark:hover:bg-[#E0E0E0] transition-all disabled:opacity-20"
       >
         保存风格
       </button>

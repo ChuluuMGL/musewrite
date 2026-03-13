@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: AI-Writer API
+  title: MuseWrite API
   description: |
     AI 驱动的内容生成执行器 - 基于四层卡片体系的内容生成系统
 
@@ -19,11 +19,14 @@ info:
     - 内置质量检查和敏感词过滤
     - 支持配图生成(SeedDream)
     - 多账号人设管理
+    - 本地优先存储 + iCloud 同步
+    - 偏好学习系统
+    - 多平台发布支持
 
   version: 1.0.0
   contact:
-    name: Zhoumo
-    email: support@example.com
+    name: MuseWrite Team
+    email: support@musewrite.app
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
@@ -31,7 +34,7 @@ info:
 servers:
   - url: http://localhost:18062
     description: 本地开发服务器
-  - url: https://api.aiwriter.example.com
+  - url: https://api.musewrite.app
     description: 生产环境服务器
 
 tags:
@@ -41,8 +44,16 @@ tags:
     description: 任务管理相关接口
   - name: Card Management
     description: 卡片管理相关接口
+  - name: Draft Management
+    description: 草稿管理相关接口
+  - name: Publishing
+    description: 平台发布相关接口
   - name: Feedback
     description: 反馈系统相关接口
+  - name: Preferences
+    description: 偏好学习系统接口
+  - name: Storage
+    description: 本地存储接口
   - name: System
     description: 系统状态相关接口
 
@@ -51,7 +62,7 @@ paths:
   /health:
     get:
       tags: [System]
-      summary: 健康检查
+      summary: 基础健康检查
       description: 检查服务是否正常运行
       responses:
         '200':
@@ -71,8 +82,40 @@ paths:
                     type: string
               example:
                 status: ok
-                timestamp: "2026-03-11T08:00:00Z"
+                timestamp: "2026-03-12T08:00:00Z"
                 version: "1.0.0"
+
+  /api/v1/health:
+    get:
+      tags: [System]
+      summary: 深度健康检查
+      description: 检查服务各组件状态，包括 LLM、存储、配置等
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: 健康检查结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResult'
+              example:
+                status: ok
+                timestamp: "2026-03-12T08:00:00Z"
+                version: "1.0.0"
+                components:
+                  llm:
+                    status: ok
+                    provider: openai
+                    model: gpt-4-turbo
+                  storage:
+                    status: ok
+                    type: local
+                    available: true
+                  config:
+                    status: ok
+                    valid: true
+                uptime: 3600
 
   /api/v1/status:
     get:
@@ -120,7 +163,7 @@ paths:
               withImage:
                 summary: 生成内容+配图
                 value:
-                  source: "AI-Writer v1.0.0 发布"
+                  source: "MuseWrite v1.0.0 发布"
                   platform: xiaohongshu
                   info: stone
                   image: true
@@ -151,7 +194,7 @@ paths:
                     warnings: ["建议增加更多个人经历"]
                 image:
                   filename: cover-123.png
-                  path: /path/to/covers/2026-03-11/
+                  path: /path/to/covers/2026-03-12/
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -269,7 +312,7 @@ paths:
   # ==================== 草稿管理 ====================
   /api/v1/drafts:
     get:
-      tags: [Task Management]
+      tags: [Draft Management]
       summary: 列出草稿
       description: 列出已生成的草稿列表
       security:
@@ -280,10 +323,20 @@ paths:
           description: 按状态筛选
           schema:
             type: string
-            enum: [draft, reviewed, published, archived]
+            enum: [draft, pending_review, approved, rejected, published, archived]
         - name: platform
           in: query
           description: 按平台筛选
+          schema:
+            type: string
+        - name: account
+          in: query
+          description: 按账号筛选
+          schema:
+            type: string
+        - name: search
+          in: query
+          description: 搜索关键词
           schema:
             type: string
         - name: limit
@@ -307,9 +360,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/DraftList'
 
+    post:
+      tags: [Draft Management]
+      summary: 创建草稿
+      description: 手动创建新草稿
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, content]
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    type: string
+                platform:
+                  type: string
+                account:
+                  type: string
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Draft'
+
   /api/v1/drafts/{id}:
     get:
-      tags: [Task Management]
+      tags: [Draft Management]
       summary: 获取草稿详情
       security:
         - ApiKeyAuth: []
@@ -330,9 +417,9 @@ paths:
           $ref: '#/components/responses/NotFound'
 
     patch:
-      tags: [Task Management]
+      tags: [Draft Management]
       summary: 更新草稿
-      description: 更新草稿内容或状态
+      description: 更新草稿内容或状态，会自动学习用户修改偏好
       security:
         - ApiKeyAuth: []
       parameters:
@@ -357,7 +444,7 @@ paths:
                     type: string
                 status:
                   type: string
-                  enum: [draft, reviewed, published, archived]
+                  enum: [draft, pending_review, approved, rejected, published, archived]
       responses:
         '200':
           description: 更新成功
@@ -367,7 +454,7 @@ paths:
                 $ref: '#/components/schemas/Draft'
 
     delete:
-      tags: [Task Management]
+      tags: [Draft Management]
       summary: 删除草稿
       security:
         - ApiKeyAuth: []
@@ -385,7 +472,7 @@ paths:
 
   /api/v1/drafts/{id}/quality:
     get:
-      tags: [Task Management]
+      tags: [Draft Management]
       summary: 质量检查
       description: 对草稿进行质量检查
       security:
@@ -404,10 +491,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/QualityResult'
 
-  # ==================== 版本管理（新功能）====================
+  # ==================== 版本管理 ====================
   /api/v1/drafts/{id}/versions:
     get:
-      tags: [Task Management]
+      tags: [Draft Management]
       summary: 获取版本历史
       description: 获取草稿的所有历史版本
       security:
@@ -434,7 +521,7 @@ paths:
                       $ref: '#/components/schemas/DraftVersion'
 
     post:
-      tags: [Task Management]
+      tags: [Draft Management]
       summary: 创建新版本
       description: 保存当前草稿为新版本
       security:
@@ -460,7 +547,7 @@ paths:
 
   /api/v1/drafts/{id}/versions/{version}:
     get:
-      tags: [Task Management]
+      tags: [Draft Management]
       summary: 获取特定版本
       security:
         - ApiKeyAuth: []
@@ -484,7 +571,7 @@ paths:
                 $ref: '#/components/schemas/DraftVersion'
 
     post:
-      tags: [Task Management]
+      tags: [Draft Management]
       summary: 回滚到指定版本
       security:
         - ApiKeyAuth: []
@@ -507,10 +594,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/Draft'
 
-  # ==================== 审核流程（新功能）====================
+  # ==================== 审核流程 ====================
   /api/v1/drafts/{id}/review:
     post:
-      tags: [Task Management]
+      tags: [Draft Management]
       summary: 提交审核
       description: 将草稿提交审核
       security:
@@ -543,7 +630,7 @@ paths:
 
   /api/v1/drafts/{id}/review/approve:
     post:
-      tags: [Task Management]
+      tags: [Draft Management]
       summary: 批准审核
       security:
         - ApiKeyAuth: []
@@ -572,7 +659,7 @@ paths:
 
   /api/v1/drafts/{id}/review/reject:
     post:
-      tags: [Task Management]
+      tags: [Draft Management]
       summary: 拒绝审核
       security:
         - ApiKeyAuth: []
@@ -606,7 +693,7 @@ paths:
 
   /api/v1/reviews:
     get:
-      tags: [Task Management]
+      tags: [Draft Management]
       summary: 获取待审核列表
       description: 获取当前用户待审核的草稿列表
       security:
@@ -635,6 +722,519 @@ paths:
                       $ref: '#/components/schemas/Review'
                   total:
                     type: integer
+
+  # ==================== 平台发布 ====================
+  /api/v1/publish:
+    post:
+      tags: [Publishing]
+      summary: 发布到单个平台
+      description: 将草稿发布到指定平台
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishRequest'
+            example:
+              draftId: draft-abc123
+              platform: wordpress
+              options:
+                status: draft
+      responses:
+        '200':
+          description: 发布结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublishResponse'
+              example:
+                success: true
+                platform: wordpress
+                url: https://example.com/post/123
+                id: "123"
+
+  /api/v1/publish/batch:
+    post:
+      tags: [Publishing]
+      summary: 批量发布
+      description: 将草稿发布到多个平台
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [draftId, platforms]
+              properties:
+                draftId:
+                  type: string
+                platforms:
+                  type: array
+                  items:
+                    type: string
+                options:
+                  type: object
+      responses:
+        '200':
+          description: 批量发布结果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  success:
+                    type: integer
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PublishResponse'
+
+  /api/v1/publish/platforms:
+    get:
+      tags: [Publishing]
+      summary: 获取支持的平台列表
+      description: 列出所有支持的发布平台及其配置状态
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: 平台列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  platforms:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PlatformInfo'
+
+  /api/v1/publish/history:
+    get:
+      tags: [Publishing]
+      summary: 获取发布历史
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: platform
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 发布历史
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  history:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PublishRecord'
+
+  # ==================== 偏好学习 ====================
+  /api/v1/preferences:
+    get:
+      tags: [Preferences]
+      summary: 获取用户偏好
+      description: 获取学习到的用户偏好设置
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: context
+          in: query
+          description: 上下文过滤（如平台、账号）
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 用户偏好
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferences'
+
+    put:
+      tags: [Preferences]
+      summary: 更新用户偏好
+      description: 手动更新偏好设置
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                avoid:
+                  type: array
+                  items:
+                    type: string
+                prefer:
+                  type: array
+                  items:
+                    type: string
+                style:
+                  type: object
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPreferences'
+
+  /api/v1/preferences/rules:
+    get:
+      tags: [Preferences]
+      summary: 获取学习规则
+      description: 获取从编辑行为中学习到的规则
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: 学习规则
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rules:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PreferenceRule'
+                  total:
+                    type: integer
+
+    delete:
+      tags: [Preferences]
+      summary: 清除学习规则
+      description: 清除所有学习到的规则
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '204':
+          description: 清除成功
+
+  /api/v1/preferences/format:
+    get:
+      tags: [Preferences]
+      summary: 获取偏好提示词
+      description: 获取格式化后的偏好提示词，用于注入到生成请求
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: 格式化偏好
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  prompt:
+                    type: string
+                    description: 可直接注入LLM的偏好提示
+
+  # ==================== 本地存储 ====================
+  /api/v1/storage/personas:
+    get:
+      tags: [Storage]
+      summary: 列出人设
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: 人设列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Persona'
+
+    post:
+      tags: [Storage]
+      summary: 创建人设
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonaInput'
+      responses:
+        '201':
+          description: 创建成功
+
+  /api/v1/storage/personas/{id}:
+    get:
+      tags: [Storage]
+      summary: 获取人设
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 人设详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Persona'
+
+    put:
+      tags: [Storage]
+      summary: 更新人设
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PersonaInput'
+      responses:
+        '200':
+          description: 更新成功
+
+    delete:
+      tags: [Storage]
+      summary: 删除人设
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 删除成功
+
+  /api/v1/storage/styles:
+    get:
+      tags: [Storage]
+      summary: 列出风格
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: 风格列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Style'
+
+  /api/v1/storage/styles/{id}:
+    get:
+      tags: [Storage]
+      summary: 获取风格
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 风格详情
+
+    put:
+      tags: [Storage]
+      summary: 更新风格
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StyleInput'
+      responses:
+        '200':
+          description: 更新成功
+
+    delete:
+      tags: [Storage]
+      summary: 删除风格
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 删除成功
+
+  /api/v1/storage/settings:
+    get:
+      tags: [Storage]
+      summary: 获取设置
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: 应用设置
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppSettings'
+
+    patch:
+      tags: [Storage]
+      summary: 更新设置
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: 更新成功
+
+  /api/v1/storage/backup:
+    post:
+      tags: [Storage]
+      summary: 创建备份
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '201':
+          description: 备份创建成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  backupId:
+                    type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+
+    get:
+      tags: [Storage]
+      summary: 列出备份
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: 备份列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    createdAt:
+                      type: string
+                      format: date-time
+                    size:
+                      type: integer
+
+  /api/v1/storage/backup/{id}/restore:
+    post:
+      tags: [Storage]
+      summary: 恢复备份
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 恢复成功
+
+  /api/v1/storage/export:
+    get:
+      tags: [Storage]
+      summary: 导出数据
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, markdown]
+            default: json
+      responses:
+        '200':
+          description: 导出数据
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/v1/storage/import:
+    post:
+      tags: [Storage]
+      summary: 导入数据
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                format:
+                  type: string
+                  enum: [json, markdown]
+      responses:
+        '200':
+          description: 导入成功
 
   # ==================== 异步任务 ====================
   /api/v1/tasks:
@@ -683,7 +1283,7 @@ paths:
               example:
                 taskId: task-abc123
                 status: pending
-                createdAt: "2026-03-11T08:00:00Z"
+                createdAt: "2026-03-12T08:00:00Z"
 
     get:
       tags: [Task Management]
@@ -892,6 +1492,55 @@ paths:
                     envKey:
                       type: string
 
+  # ==================== 配置管理 ====================
+  /api/v1/config/check:
+    get:
+      tags: [System]
+      summary: 检查配置
+      description: 检查系统配置完整性
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: 配置检查结果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  llm:
+                    type: object
+                    properties:
+                      configured:
+                        type: boolean
+                      providers:
+                        type: array
+                        items:
+                          type: string
+                  storage:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                      available:
+                        type: boolean
+                  publishing:
+                    type: object
+                    properties:
+                      enabled:
+                        type: boolean
+                      platforms:
+                        type: array
+                        items:
+                          type: string
+                  notifications:
+                    type: object
+                    properties:
+                      feishu:
+                        type: boolean
+                      webhook:
+                        type: boolean
+
 # ==================== 组件定义 ====================
 components:
   securitySchemes:
@@ -931,6 +1580,10 @@ components:
         checkFeedback:
           type: boolean
           description: 是否检查反馈清单
+          default: true
+        learnPreferences:
+          type: boolean
+          description: 是否应用学习到的偏好
           default: true
         image:
           type: boolean
@@ -1274,6 +1927,346 @@ components:
               type: string
             configured:
               type: boolean
+
+    HealthCheckResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, error]
+        timestamp:
+          type: string
+          format: date-time
+        version:
+          type: string
+        uptime:
+          type: integer
+        components:
+          type: object
+          properties:
+            llm:
+              type: object
+              properties:
+                status:
+                  type: string
+                provider:
+                  type: string
+                model:
+                  type: string
+            storage:
+              type: object
+              properties:
+                status:
+                  type: string
+                type:
+                  type: string
+                available:
+                  type: boolean
+            config:
+              type: object
+              properties:
+                status:
+                  type: string
+                valid:
+                  type: boolean
+
+    PublishRequest:
+      type: object
+      required: [draftId, platform]
+      properties:
+        draftId:
+          type: string
+          description: 草稿ID
+        platform:
+          type: string
+          description: 目标平台
+          enum: [wechat, wordpress, weibo, zhihu, xiaohongshu, douyin, toutiao]
+        options:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [draft, publish]
+              default: draft
+            schedule:
+              type: string
+              format: date-time
+
+    PublishResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        platform:
+          type: string
+        url:
+          type: string
+        id:
+          type: string
+        status:
+          type: string
+          enum: [success, manual, failed]
+        tips:
+          type: array
+          items:
+            type: string
+        error:
+          type: string
+
+    PublishRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        draftId:
+          type: string
+        platform:
+          type: string
+        status:
+          type: string
+        url:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    PlatformInfo:
+      type: object
+      properties:
+        name:
+          type: string
+        enabled:
+          type: boolean
+        autoPublish:
+          type: boolean
+        type:
+          type: string
+          enum: [official, manual, self-hosted]
+        features:
+          type: array
+          items:
+            type: string
+
+    UserPreferences:
+      type: object
+      properties:
+        avoid:
+          type: array
+          items:
+            type: string
+          description: 避免使用的词汇
+        prefer:
+          type: array
+          items:
+            type: string
+          description: 偏好使用的词汇
+        style:
+          type: object
+          properties:
+            tone:
+              type: string
+            sentenceLength:
+              type: string
+            punctuation:
+              type: array
+              items:
+                type: string
+        rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/PreferenceRule'
+
+    PreferenceRule:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [avoid, prefer, style]
+        pattern:
+          type: string
+        replacement:
+          type: string
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        source:
+          type: string
+          enum: [edit, feedback, explicit]
+        createdAt:
+          type: string
+          format: date-time
+
+    Persona:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        title:
+          type: string
+        avatar:
+          type: string
+        identity:
+          type: string
+        tone:
+          type: array
+          items:
+            type: string
+        catchphrases:
+          type: array
+          items:
+            type: string
+        audience:
+          type: object
+          properties:
+            age:
+              type: string
+            occupation:
+              type: array
+              items:
+                type: string
+        topics:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PersonaInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        title:
+          type: string
+        avatar:
+          type: string
+        identity:
+          type: string
+        tone:
+          type: array
+          items:
+            type: string
+        catchphrases:
+          type: array
+          items:
+            type: string
+        audience:
+          type: object
+        topics:
+          type: array
+          items:
+            type: string
+
+    Style:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        language:
+          type: object
+          properties:
+            tone:
+              type: string
+            person:
+              type: string
+            sentenceLength:
+              type: string
+            punctuation:
+              type: array
+              items:
+                type: string
+        structure:
+          type: object
+          properties:
+            opening:
+              type: array
+              items:
+                type: string
+            body:
+              type: array
+              items:
+                type: string
+            closing:
+              type: array
+              items:
+                type: string
+        avoid:
+          type: array
+          items:
+            type: string
+        prefer:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    StyleInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        language:
+          type: object
+        structure:
+          type: object
+        avoid:
+          type: array
+          items:
+            type: string
+        prefer:
+          type: array
+          items:
+            type: string
+
+    AppSettings:
+      type: object
+      properties:
+        defaultPlatform:
+          type: string
+        defaultPersona:
+          type: string
+        defaultStyle:
+          type: string
+        llmProvider:
+          type: string
+        llmModel:
+          type: string
+        imageGeneration:
+          type: boolean
+        imageProvider:
+          type: string
+        storageType:
+          type: string
+          enum: [local, icloud]
+        autoSave:
+          type: boolean
+        theme:
+          type: string
+          enum: [light, dark, system]
+        language:
+          type: string
 
     Error:
       type: object

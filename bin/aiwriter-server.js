@@ -17,6 +17,27 @@ const LoggerMiddleware = require(path.join(ROOT, 'lib/LoggerMiddleware'));
 const RetryMiddleware = require(path.join(ROOT, 'lib/RetryMiddleware'));
 const PublishTracker = require(path.join(ROOT, 'lib/PublishTracker'));
 const DraftManager = require(path.join(ROOT, 'lib/DraftManager'));
+const AgentCoordinator = require(path.join(ROOT, 'lib/AgentCoordinator'));
+const PreferenceLearner = require(path.join(ROOT, 'lib/PreferenceLearner'));
+const PlatformPublisher = require(path.join(ROOT, 'lib/PlatformPublisher'));
+const { getConfig } = require(path.join(ROOT, 'lib/ConfigManager'));
+
+// 新增：安全、缓存、错误处理
+const { AppError, ErrorCodes, Validator, asyncHandler } = require(path.join(ROOT, 'lib/AppError'));
+const { getCache, createNamespacedCache, TTL } = require(path.join(ROOT, 'lib/CacheManager'));
+const { crypto, validator: inputValidator, sanitizer, setSecurityHeaders } = require(path.join(ROOT, 'lib/SecurityManager'));
+
+// 加载模块化路由
+const loadRoutes = require(path.join(ROOT, 'lib/routes/index'));
+
+// WebSocket（可选）
+let wsManager = null;
+try {
+  const { getWebSocket } = require(path.join(ROOT, 'lib/WebSocketManager'));
+  wsManager = getWebSocket({ port: 18063 });
+} catch (e) {
+  console.log('⚠️ WebSocket模块未加载:', e.message);
+}
 
 const feedbackManager = new FeedbackManager(ROOT);
 const taskQueue = new TaskQueue(path.join(ROOT, 'tasks'));
@@ -27,6 +48,22 @@ const logger = new LoggerMiddleware(path.join(ROOT, 'logs'));
 const retry = new RetryMiddleware({ maxRetries: 3, baseDelay: 1000 });
 const publishTracker = new PublishTracker();
 const draftManager = new DraftManager(DRAFTS_PATH);
+
+const coordinator = new AgentCoordinator(path.join(ROOT, 'config'));
+
+// 新增：偏好学习器和平台发布器
+const preferenceLearner = new PreferenceLearner(path.join(ROOT, 'data', 'preferences.json'));
+const platformPublisher = new PlatformPublisher({
+  configPath: path.join(ROOT, 'config', 'publishers.json')
+});
+
+// 新增：缓存层
+const configCache = createNamespacedCache('config', TTL.MEDIUM);
+const draftCache = createNamespacedCache('drafts', TTL.SHORT);
+const preferenceCache = createNamespacedCache('preferences', TTL.LONG);
+
+// 加载模块化路由
+const routeHandlers = loadRoutes(ROOT);
 
 if (auth.keys.keys.length === 0) {
   const defaultKey = auth.generateKey('default', ['read', 'write', 'admin']);
@@ -81,25 +118,29 @@ function validateGenerateInput(body) {
 }
 
 async function handleGenerate(body, taskId = null) {
-  const { source, platform, info, checkFeedback, image } = body;
+  const { source, platform, info, checkFeedback, image, learnPreferences } = body;
 
   // 输入验证
   const errors = validateGenerateInput(body);
   if (errors.length > 0) {
-    const error = new Error(`输入验证失败: ${  errors.join('; ')}`);
+    const error = new Error(`输入验证失败: ${errors.join('; ')}`);
     error.code = 'VALIDATION_ERROR';
     throw error;
   }
 
   if (taskId) { taskQueue.startTask(taskId); taskQueue.updateProgress(taskId, 10, 'Starting...'); }
 
-  const AgentCoordinator = require(path.join(ROOT, 'lib/AgentCoordinator'));
-  const QualityChecker = require(path.join(ROOT, 'lib/QualityChecker'));
-
   let checklist = [];
   if (checkFeedback) checklist = feedbackManager.getChecklist(platform || 'xiaohongshu', info || 'stone');
 
-  const coordinator = new AgentCoordinator(path.join(ROOT, 'config'), { withImage: image });
+  // 获取偏好提示词（如果启用）
+  let preferencePrompt = '';
+  if (learnPreferences !== false) {
+    preferencePrompt = preferenceLearner.formatForPrompt();
+  }
+
+  // Use the shared coordinator instance
+  const QualityChecker = require(path.join(ROOT, 'lib/QualityChecker'));
   const checker = new QualityChecker();
 
   const draft = await coordinator.generateForAccount(info || 'stone', source, platform || 'xiaohongshu', image);
@@ -117,6 +158,12 @@ async function handleGenerate(body, taskId = null) {
   return { success: true, draft: { title: draft.title, content: draft.content, tags: draft.tags, platform: draft.platform, account: draft.account }, quality: { score: quality.score, issues: quality.issues, warnings: quality.warnings, feedbackChecklist: checklist }, image: draft.image ? { filename: draft.image.filename, path: draft.image.path } : null, filename };
 }
 
+// 辅助函数：从编辑中学习偏好
+function handleDraftEdit(draftId, originalContent, editedContent, context) {
+  preferenceLearner.learn(originalContent, editedContent, context || {});
+  return { success: true, message: 'Preferences learned' };
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${port}`);
   const pathname = url.pathname;
@@ -124,7 +171,8 @@ const server = http.createServer(async (req, res) => {
   logger.middleware(req, res);
   requestId.middleware(req, res);
 
-  if (pathname !== '/api/v1/status' && !auth.validateRequest(req, res)) return;
+  const publicPaths = ['/', '/health', '/api/v1/health', '/api/v1/status'];
+  if (!publicPaths.includes(pathname) && !auth.validateRequest(req, res)) return;
   if (pathname !== '/api/v1/status' && !rateLimiter.middleware(req, res)) return;
 
   if (req.method === 'POST' && req.isDuplicate) {
@@ -134,10 +182,28 @@ const server = http.createServer(async (req, res) => {
   }
 
   res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key, X-Request-ID');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
 
   try {
     // ==================== 健康检查端点 ====================
-    if (pathname === '/health' && req.method === 'GET') {
+    if (pathname === '/' && req.method === 'GET') {
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        message: 'MuseWrite API Server is running',
+        version: '1.0.0',
+        help: 'Please use /api/v1/status for detailed status'
+      }));
+    }
+    else if (pathname === '/health' && req.method === 'GET') {
       // 轻量级健康检查（用于负载均衡器）
       res.writeHead(200);
       res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
@@ -185,6 +251,18 @@ const server = http.createServer(async (req, res) => {
     else if (pathname === '/api/v1/status' && req.method === 'GET') {
       res.writeHead(200);
       res.end(JSON.stringify({ success: true, service: 'MuseWrite API', version: '1.0.0', port, timestamp: new Date().toISOString(), features: { authentication: true, rateLimiting: true, idempotency: true, openapi: true }, tasks: { total: Object.keys(taskQueue.tasks).length, pending: Object.values(taskQueue.tasks).filter(t => t.status === 'pending').length, running: Object.values(taskQueue.tasks).filter(t => t.status === 'running').length }, apiKeys: { total: auth.keys.keys.length, active: auth.keys.keys.filter(k => k.lastUsed).length } }));
+    }
+    else if (pathname === '/api/v1/accounts' && req.method === 'GET') {
+      res.writeHead(200);
+      res.end(JSON.stringify({ success: true, accounts: coordinator.listAccounts() }));
+    }
+    else if (pathname === '/api/v1/platforms' && req.method === 'GET') {
+      res.writeHead(200);
+      res.end(JSON.stringify({ success: true, platforms: coordinator.listPlatforms() }));
+    }
+    else if (pathname === '/api/v1/styles' && req.method === 'GET') {
+      res.writeHead(200);
+      res.end(JSON.stringify({ success: true, styles: coordinator.listStyles() }));
     }
     else if (pathname === '/api/v1/generate' && req.method === 'POST') {
       const body = await readBody(req);
@@ -381,7 +459,22 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200);
       res.end(JSON.stringify({ success: true, review }));
     }
+
+    // ==================== 模块化路由分发 ====================
     else {
+      // 尝试模块化路由
+      const route = routeHandlers.match(req.method, pathname);
+      if (route) {
+        try {
+          const body = req.method !== 'GET' && req.method !== 'DELETE' ? await readBody(req) : {};
+          await route.handler(req, res, route.params, body);
+        } catch (routeError) {
+          res.writeHead(500);
+          res.end(JSON.stringify({ success: false, error: routeError.message }));
+        }
+        return;
+      }
+
       res.writeHead(404);
       res.end(JSON.stringify({ success: false, error: 'Not Found', message: `Unknown endpoint: ${pathname}` }));
     }
@@ -398,11 +491,25 @@ server.listen(port, () => {
   console.log('║           MuseWrite API Server v1.0.0                  ║');
   console.log('║           灵感驱动，智能写作                              ║');
   console.log('╠════════════════════════════════════════════════════════╣');
-  console.log(`║  URL: http://localhost:${port}                            ║`);
+  console.log(`║  API: http://localhost:${port}                            ║`);
+  if (wsManager) {
+    console.log(`║  WebSocket: ws://localhost:18063                        ║`);
+  }
   console.log('║  认证：API Key (X-API-Key)                              ║');
   console.log('║  限流：60 次/分钟，1000 次/小时                            ║');
   console.log('║  幂等：X-Request-ID 头                                  ║');
+  console.log('║  功能：缓存 | WebSocket | 偏好学习 | 安全加固              ║');
   console.log('╚════════════════════════════════════════════════════════╝\n');
+
+  // 启动WebSocket服务器
+  if (wsManager) {
+    wsManager.start();
+    console.log('🔌 WebSocket 服务已启动');
+  }
+
+  // 打印缓存统计
+  const cache = getCache();
+  console.log('📦 缓存系统已初始化');
 });
 
 // ==================== 优雅关闭 ====================
@@ -414,6 +521,22 @@ function gracefulShutdown(signal) {
 
   console.log(`\n收到 ${signal} 信号，正在优雅关闭...`);
 
+  // 关闭WebSocket
+  if (wsManager) {
+    wsManager.stop();
+    console.log('✅ WebSocket 服务器已关闭');
+  }
+
+  // 清理缓存
+  try {
+    const cache = getCache();
+    const stats = cache.getStats();
+    console.log(`✅ 缓存统计: 命中率 ${stats.hitRate}`);
+    cache.destroy();
+  } catch (e) {
+    console.log('⚠️ 缓存清理失败:', e.message);
+  }
+
   // 停止接受新连接
   server.close(() => {
     console.log('✅ HTTP 服务器已关闭');
@@ -424,6 +547,14 @@ function gracefulShutdown(signal) {
       console.log('✅ 任务队列已保存');
     } catch (e) {
       console.log('⚠️ 任务队列保存失败:', e.message);
+    }
+
+    // 保存偏好学习数据
+    try {
+      preferenceLearner._save();
+      console.log('✅ 偏好数据已保存');
+    } catch (e) {
+      console.log('⚠️ 偏好数据保存失败:', e.message);
     }
 
     console.log('👋 MuseWrite 已安全关闭');
