@@ -60,7 +60,7 @@ async function testProvider(providerName, config = {}) {
 
     // 检查是否配置
     if (!info.configured && providerName !== 'mock') {
-      throw new Error(`Provider 未配置，请设置相应的环境变量`);
+      throw new Error('Provider 未配置，请设置相应的环境变量');
     }
 
     log('cyan', `  📡 正在连接 ${providerName}...`);

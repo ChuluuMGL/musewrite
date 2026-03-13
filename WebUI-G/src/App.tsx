@@ -51,7 +51,9 @@ import {
   Cpu,
   Cloud,
   Database,
-  Search
+  Search,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 // --- Types ---
@@ -131,6 +133,25 @@ const PLATFORM_PRESETS: Platform[] = [
 ];
 
 
+const MoonFull = ({ size = 18, className = "" }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <circle cx="12" cy="12" r="10" />
+    <path d="M8 9a1.5 1.5 0 0 0 0 3 1.5 1.5 0 0 0 0-3z" />
+    <path d="M14 13a2.5 2.5 0 0 0 0 5 2.5 2.5 0 0 0 0-5z" />
+    <path d="M10 16a1 1 0 0 0 0 2 1 1 0 0 0 0-2z" />
+  </svg>
+);
 
 export default function App() {
   // --- Global State ---
@@ -178,6 +199,10 @@ export default function App() {
     }
   };
 
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
   const [customStyles, setCustomStyles] = useState<StylePreset[]>(() => {
     const saved = localStorage.getItem('musewrite_custom_styles');
     return saved ? JSON.parse(saved) : [];
@@ -190,17 +215,16 @@ export default function App() {
     setIsGeneratingPlatform(prev => ({ ...prev, [platformId]: true }));
     
     try {
-      // 优先使用用户在 UI 中输入的 API Key，其次是环境变量，最后是全局 window 对象
-      const apiKey = userApiKey || (process.env as any).GEMINI_API_KEY || (process.env as any).GOOGLE_API_KEY || (window as any).GEMINI_API_KEY;
+      const configItem = llmConfig.providers.find(p => p.model === selectedModel);
+      const providerStr = configItem?.name || (selectedModel.includes('gemini') ? 'gemini' : selectedModel.includes('gpt') ? 'openai' : 'deepseek');
+      const apiKey = userApiKey;
       
       console.log(`Starting platform adaptation: ${platformId} using ${selectedModel}`);
       
-      if (!apiKey) {
-        throw new Error("API_KEY_MISSING");
+      if (!apiKey && providerStr !== 'ollama') {
+        throw new Error("请先在此页面左下角配置 API Key");
       }
 
-      // @google/genai 1.29.0 SDK
-      const ai = new GoogleGenAI({ apiKey });
       const platform = platformConfigs.find(p => p.id === platformId);
       
       const prompt = `
@@ -226,17 +250,14 @@ export default function App() {
         不要包含 Markdown 代码块标记（如 \`\`\`json）。
       `;
 
-      // 使用 ai.models.generateContent 语法
-      const response = await ai.models.generateContent({
-        model: selectedModel || 'gemini-2.0-flash',
-        contents: prompt
-      });
+      // Use the backend chat/test endpoint as a proxy to call the LLM properly with any provider
+      const response = await apiService.testLlmConnection(providerStr, selectedModel, apiKey, 'adapt', prompt);
 
-      if (!response || !response.text) {
-        throw new Error("AI_RETURNED_EMPTY_RESPONSE");
+      if (!response || !response.success || !response.rawResponse) {
+        throw new Error(response?.error || "AI_RETURNED_EMPTY_RESPONSE");
       }
 
-      const text = response.text;
+      const text = response.rawResponse;
       console.log("Adaptation response text:", text);
 
       const jsonStr = text.match(/\{[\s\S]*\}/)?.[0] || text;
@@ -258,9 +279,10 @@ export default function App() {
           }
         };
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Platform generation failed:", error);
-      alert("适配失败，请重试。");
+      setToastMessage({ show: true, text: `适配失败: ${error.message || '请重试'}` });
+      setTimeout(() => setToastMessage({ show: false, text: '' }), 3500);
     } finally {
       setIsGeneratingPlatform(prev => ({ ...prev, [platformId]: false }));
     }
@@ -281,7 +303,7 @@ export default function App() {
   const [editingIdentity, setEditingIdentity] = useState<Identity | null>(null);
   const [editingStyle, setEditingStyle] = useState<StylePreset | null>(null);
 
-  const [selectedModel, setSelectedModel] = useState('gemini-1.5-flash');
+  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('musewrite_selected_model') || 'gemini-1.5-flash');
   const [userApiKey, setUserApiKey] = useState(() => localStorage.getItem('musewrite_user_api_key') || '');
   const [tempApiKey, setTempApiKey] = useState(() => localStorage.getItem('musewrite_user_api_key') || '');
   const [isTestingKey, setIsTestingKey] = useState(false);
@@ -298,11 +320,33 @@ export default function App() {
   const [isEditingImage, setIsEditingImage] = useState(false);
   const [imagePrompt, setImagePrompt] = useState('');
   const [isModifyingImage, setIsModifyingImage] = useState(false);
+  
+  // Toast State
+  const [toastMessage, setToastMessage] = useState<{show: boolean, text: string}>({ show: false, text: '' });
 
   // --- Persistence Effects ---
   useEffect(() => {
     localStorage.setItem('musewrite_identities', JSON.stringify(identities));
   }, [identities]);
+
+  useEffect(() => {
+    localStorage.setItem('musewrite_custom_styles', JSON.stringify(customStyles));
+  }, [customStyles]);
+
+  // Handle click outside for model dropdown
+  useEffect(() => {
+    if (!isModelDropdownOpen) return;
+    
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.model-dropdown-container')) {
+        setIsModelDropdownOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isModelDropdownOpen]);
 
   useEffect(() => {
     localStorage.setItem('musewrite_selected_identity', selectedIdentityId);
@@ -315,10 +359,6 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('musewrite_selected_platforms', JSON.stringify(selectedPlatforms));
   }, [selectedPlatforms]);
-
-  useEffect(() => {
-    localStorage.setItem('musewrite_custom_styles', JSON.stringify(customStyles));
-  }, [customStyles]);
 
   useEffect(() => {
     localStorage.setItem('musewrite_platform_configs', JSON.stringify(platformConfigs));
@@ -437,6 +477,9 @@ export default function App() {
         const llmRes = await apiService.getLlmConfig();
         if (llmRes.success) {
           setLlmConfig(llmRes.llm);
+          if (llmRes.llm.defaultProvider && !localStorage.getItem('musewrite_selected_model')) {
+            setSelectedModel(llmRes.llm.defaultProvider);
+          }
         }
       } catch (error) {
         console.warn('Backend sync failed, staying in offline mode:', error);
@@ -489,10 +532,12 @@ export default function App() {
     } catch (error: any) {
       console.error("Refinement failed:", error);
       if (error.message === 'API_KEY_MISSING') {
-        alert("未配置 API Key，请在左下角设置中配置。");
+        setToastMessage({ show: true, text: '提取失败：未配置 API Key' });
+        setTimeout(() => setToastMessage({ show: false, text: '' }), 3500);
         setMainView('api-settings');
       } else {
-        alert("修改失败，请重试。");
+        setToastMessage({ show: true, text: '修改失败，请重试' });
+        setTimeout(() => setToastMessage({ show: false, text: '' }), 3500);
       }
     } finally {
       setIsRefining(false);
@@ -528,7 +573,8 @@ export default function App() {
     } catch (error: any) {
       console.error("Extraction failed:", error);
       if (error.message === 'API_KEY_MISSING') {
-        alert("未配置 API Key，请在左下角设置中配置。");
+        setToastMessage({ show: true, text: '提取失败：未配置 API Key' });
+        setTimeout(() => setToastMessage({ show: false, text: '' }), 3500);
         setMainView('api-settings');
       }
       setExtractedInfo(material); // Fallback to raw material
@@ -543,7 +589,7 @@ export default function App() {
     try {
       const response = await apiService.generateContent({
         source: extractedInfo,
-        platform: selectedPlatforms[0], // 暂时取第一个
+        platform: selectedPlatforms[0] || 'xiaohongshu', // 暂时取第一个，若无则给默认值以防后端校验失败
         info: currentIdentity.name,
         style: currentStyle.name,
         image: autoImage,
@@ -571,11 +617,12 @@ export default function App() {
     } catch (error: any) {
       console.error("Generation failed:", error);
       if (error.message === 'API_KEY_MISSING') {
-        alert("未配置 API Key，请点击左下角设置图标，在 API 设置中输入 Key。");
+        setToastMessage({ show: true, text: '生成失败：未配置 API Key' });
         setMainView('api-settings');
       } else {
-        alert(`生成失败: ${error.message || "请检查网络或配置"}`);
+        setToastMessage({ show: true, text: `生成失败: ${error.message || "请检查网络或配置"}` });
       }
+      setTimeout(() => setToastMessage({ show: false, text: '' }), 3500);
     } finally {
       setIsGenerating(false);
     }
@@ -589,7 +636,7 @@ export default function App() {
     try {
       const response = await apiService.generateContent({
         source: material,
-        platform: selectedPlatforms[0],
+        platform: selectedPlatforms[0] || 'xiaohongshu', // 补充 fallback 避免后端报错
         info: currentIdentity.name,
         style: currentStyle.name,
         image: autoImage,
@@ -616,11 +663,12 @@ export default function App() {
     } catch (error: any) {
       console.error("Direct generation failed:", error);
       if (error.message === 'API_KEY_MISSING') {
-        alert("未配置 API Key，请在左下角设置中配置。");
+        setToastMessage({ show: true, text: '生成失败：未配置 API Key' });
         setMainView('api-settings');
       } else {
-        alert("生成失败，请重试。");
+        setToastMessage({ show: true, text: `生成失败，请重试` });
       }
+      setTimeout(() => setToastMessage({ show: false, text: '' }), 3500);
       setMainView('editor');
     } finally {
       setIsGenerating(false);
@@ -673,10 +721,12 @@ export default function App() {
     } catch (error: any) {
       console.error("Image modification failed:", error);
       if (error.message === 'API_KEY_MISSING') {
-        alert("未配置 API Key，请在左下角设置中配置。");
+        setToastMessage({ show: true, text: '图片修改失败：未配置 API Key' });
+        setTimeout(() => setToastMessage({ show: false, text: '' }), 3500);
         setMainView('api-settings');
       } else {
-        alert("图片修改失败，请重试。");
+        setToastMessage({ show: true, text: '图片修改失败，请重试' });
+        setTimeout(() => setToastMessage({ show: false, text: '' }), 3500);
       }
     } finally {
       setIsModifyingImage(false);
@@ -686,30 +736,38 @@ export default function App() {
   const handleSaveApiKey = () => {
     setUserApiKey(tempApiKey);
     localStorage.setItem('musewrite_user_api_key', tempApiKey);
-    alert('API Key 已保存');
+    setToastMessage({ show: true, text: 'API Key 已保存' });
+    setTimeout(() => {
+      setToastMessage({ show: false, text: '' });
+    }, 2500);
   };
 
   const handleTestConnection = async () => {
     if (!tempApiKey.trim()) {
-      alert('请先输入 API Key');
+      setToastMessage({ show: true, text: '请先输入 API Key' });
+      setTimeout(() => setToastMessage({ show: false, text: '' }), 3500);
       return;
     }
     setIsTestingKey(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: tempApiKey });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: 'ping'
-      });
-      if (response && response.text) {
-        alert('连接成功！API Key 有效。');
+      // Find the provider string for the selected model
+      const configItem = llmConfig.providers.find(p => p.model === selectedModel);
+      const providerStr = configItem?.name || (selectedModel.includes('gemini') ? 'gemini' : selectedModel.includes('gpt') ? 'openai' : 'deepseek');
+      
+      const res = await apiService.testLlmConnection(providerStr, selectedModel, tempApiKey);
+      
+      if (res && res.success) {
+        setToastMessage({ show: true, text: '连接成功！API Key 有效。' });
       } else {
-        throw new Error('No response');
+        throw new Error(res?.error || 'No response');
       }
     } catch (error: any) {
       console.error('Test connection failed:', error);
-      alert(`连接失败：${error.message || '请检查网络或 API Key 是否正确'}`);
+      setToastMessage({ show: true, text: `连接失败：${error.message || '请检查网络或 API Key'}` });
     } finally {
+      setTimeout(() => {
+        setToastMessage({ show: false, text: '' });
+      }, 3500);
       setIsTestingKey(false);
     }
   };
@@ -748,11 +806,16 @@ export default function App() {
   const handleDeleteStyle = (id: string) => {
     setCustomStyles(prev => prev.filter(s => s.id !== id));
     if (selectedStyleId === id) setSelectedStyleId('s1');
+    setToastMessage({ show: true, text: '风格已删除' });
+    setTimeout(() => setToastMessage({ show: false, text: '' }), 2500);
   };
 
   const handleCopy = (text: string) => {
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(text).then(() => alert('已复制到剪贴板'));
+      navigator.clipboard.writeText(text).then(() => {
+        setToastMessage({ show: true, text: '已复制到剪贴板' });
+        setTimeout(() => setToastMessage({ show: false, text: '' }), 2500);
+      });
     } else {
       // Fallback
       const textArea = document.createElement("textarea");
@@ -765,9 +828,12 @@ export default function App() {
       textArea.select();
       try {
         document.execCommand('copy');
-        alert('已复制到剪贴板');
+        setToastMessage({ show: true, text: '已复制到剪贴板' });
+        setTimeout(() => setToastMessage({ show: false, text: '' }), 2500);
       } catch (err) {
         console.error('Fallback copy failed', err);
+        setToastMessage({ show: true, text: '复制失败' });
+        setTimeout(() => setToastMessage({ show: false, text: '' }), 2500);
       }
       document.body.removeChild(textArea);
     }
@@ -790,6 +856,8 @@ export default function App() {
     a.download = `musewrite_backup_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    setToastMessage({ show: true, text: '数据已导出' });
+    setTimeout(() => setToastMessage({ show: false, text: '' }), 2500);
   };
 
   const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -805,11 +873,13 @@ export default function App() {
         if (data.history) setHistory(data.history);
         if (data.selectedIdentityId) setSelectedIdentityId(data.selectedIdentityId);
         if (data.selectedStyleId) setSelectedStyleId(data.selectedStyleId);
-        if (data.selectedPlatforms) setSelectedPlatforms(data.selectedPlatforms);
-        alert('数据导入成功！');
+        if (data.selectedPlatforms) setSelectedPlatforms(data.selectedPlatforms);        
+        setToastMessage({ show: true, text: '数据导入成功！' });
+        setTimeout(() => setToastMessage({ show: false, text: '' }), 2500);
         window.location.reload();
-      } catch (err) {
-        alert('导入失败：无效的备份文件');
+      } catch (e) {
+        setToastMessage({ show: true, text: '导入失败：无效的备份文件' });
+        setTimeout(() => setToastMessage({ show: false, text: '' }), 3500);
       }
     };
     reader.readAsText(file);
@@ -983,19 +1053,16 @@ export default function App() {
       {/* Rail Navigation (Far Left) */}
       <aside className="w-[56px] bg-[var(--surface-low)] border-r border-border-subtle flex flex-col items-center py-5 gap-5 shrink-0 z-20">
         <div 
-          onClick={() => handleTabClick('selection')}
-          className="w-8 h-8 rounded-lg bg-brand text-white dark:text-black flex items-center justify-center shadow-md cursor-pointer hover:scale-105 transition-transform"
+          onClick={() => {
+            handleTabClick('selection');
+            setMainView('editor');
+          }}
+          className={`w-8 h-8 rounded-lg ${sidebarTab === 'selection' && mainView === 'editor' ? 'bg-brand text-white dark:text-black shadow-lg shadow-black/10' : 'bg-surface-low text-[#A1A1A1] border border-border-subtle hover:bg-brand/10 hover:text-brand hover:border-brand/20 dark:hover:bg-brand dark:hover:text-black'} flex items-center justify-center cursor-pointer transition-all duration-300`}
+          title="返回创作"
         >
           <PenTool size={16} strokeWidth={2.5} />
         </div>
         <nav className="flex flex-col gap-1">
-          <button 
-            onClick={() => handleTabClick('selection')}
-            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'selection' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
-            title="创作设置"
-          >
-            <Layout size={18} />
-          </button>
           <button 
             onClick={() => handleTabClick('history')}
             className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'history' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
@@ -1020,6 +1087,23 @@ export default function App() {
 
         </nav>
         <div className="mt-auto flex flex-col gap-3">
+          <button 
+            onClick={toggleTheme}
+            className="w-8 h-8 flex items-center justify-center rounded-md transition-all text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5 relative group/theme"
+            title={isDarkMode ? "切换到白天模式" : "切换到夜晚模式"}
+          >
+            {isDarkMode ? (
+              <>
+                <MoonFull size={18} className="absolute transition-all duration-300 group-hover/theme:opacity-0 group-hover/theme:scale-50 group-hover/theme:rotate-90 text-yellow-400" />
+                <Sun size={18} className="absolute opacity-0 scale-50 -rotate-90 transition-all duration-300 group-hover/theme:opacity-100 group-hover/theme:scale-100 group-hover/theme:rotate-0 text-amber-500" />
+              </>
+            ) : (
+              <>
+                <Sun size={18} className="absolute transition-all duration-300 group-hover/theme:opacity-0 group-hover/theme:scale-50 group-hover/theme:-rotate-90" />
+                <MoonFull size={18} className="absolute opacity-0 scale-50 rotate-90 transition-all duration-300 group-hover/theme:opacity-100 group-hover/theme:scale-100 group-hover/theme:rotate-0 text-yellow-500" />
+              </>
+            )}
+          </button>
           <button 
             onClick={() => handleTabClick('settings')}
             className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'settings' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
@@ -1087,15 +1171,15 @@ export default function App() {
                     <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">当前风格</h3>
                     <div className="space-y-2">
                       {allStyles.map(s => (
-                        <div 
+                        <div
                           key={s.id}
-                          className={`group relative w-full p-3 border rounded-xl flex items-center justify-between transition-all ${selectedStyleId === s.id ? 'border-black bg-white dark:bg-white/10 dark:border-white shadow-sm' : 'border-transparent hover:bg-[#F0F0F0] dark:hover:bg-white/5 text-[#666] dark:text-[#A1A1A1]'}`}
+                          className={`group relative w-full p-3 border rounded-xl flex items-center justify-between transition-all ${selectedStyleId === s.id ? 'border-black bg-white dark:bg-white/10 dark:border-white shadow-sm' : 'border-transparent hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
                         >
-                          <div className="flex items-center gap-2 cursor-pointer flex-1" onClick={() => setSelectedStyleId(s.id)}>
-                            <span className={`text-sm ${selectedStyleId === s.id ? 'text-black dark:text-white' : 'text-[#A1A1A1]'}`}>{STYLE_ICONS[s.iconId] || STYLE_ICONS.default}</span>
-                            <span className="text-sm font-bold dark:text-white">{s.name}</span>
+                          <div className={`flex items-center gap-2 cursor-pointer flex-1 ${selectedStyleId === s.id ? 'text-black dark:text-white' : 'text-[#666] dark:text-[#A1A1A1]'}`} onClick={() => setSelectedStyleId(s.id)}>
+                            <span className={selectedStyleId === s.id ? 'text-black dark:text-white' : 'text-[#A1A1A1]'}>{STYLE_ICONS[s.iconId] || STYLE_ICONS.default}</span>
+                            <span className="text-sm font-bold">{s.name}</span>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className={`flex items-center gap-2 ${selectedStyleId === s.id ? 'text-black dark:text-white' : 'text-[#A1A1A1]'}`}>
                             {selectedStyleId === s.id && <Check size={14} />}
                             {s.id.startsWith('c') && (
                               <button 
@@ -1161,6 +1245,8 @@ export default function App() {
                                       localStorage.setItem('musewrite_history', JSON.stringify(newHistory));
                                       return newHistory;
                                     });
+                                    setToastMessage({ show: true, text: '记录已删除' });
+                                    setTimeout(() => setToastMessage({ show: false, text: '' }), 2500);
                                   }
                                 }}
                                 className="p-1 hover:bg-red-50 dark:hover:bg-red-500/10 rounded text-[#A1A1A1] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
@@ -1250,13 +1336,27 @@ export default function App() {
                     <SettingsNavItem label="平台管理" active={mainView === 'platform-settings'} onClick={() => setMainView('platform-settings')} icon={<Globe size={16} />} />
                     <SettingsNavItem label="数据存储" active={mainView === 'data-settings'} onClick={() => setMainView('data-settings')} icon={<Download size={16} />} />
                     <div className="h-px bg-border-subtle my-4" />
-                    <SettingsNavItem label="外观" active={mainView === 'appearance-settings'} onClick={() => setMainView('appearance-settings')} icon={<Layout size={16} />} />
                     <SettingsNavItem label="关于" active={mainView === 'about'} onClick={() => setMainView('about')} icon={<MessageSquare size={16} />} />
                   </nav>
                 </section>
               )}
             </div>
           </motion.aside>
+        )}
+      </AnimatePresence>
+
+      {/* Global Toast */}
+      <AnimatePresence>
+        {toastMessage.show && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-full shadow-2xl flex items-center gap-2"
+          >
+            <CheckCircle2 size={16} className="text-green-400 dark:text-green-600" />
+            <span className="text-xs font-bold">{toastMessage.text}</span>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -1279,6 +1379,8 @@ export default function App() {
               {mainView === 'identity-form' && (editingIdentity ? '编辑人设' : '新建人设')}
               {mainView === 'style-form' && (editingStyle ? '编辑风格' : '新建风格')}
               {mainView === 'api-settings' && 'API 设置'}
+              {mainView === 'platform-settings' && '平台管理'}
+              {mainView === 'data-settings' && '数据存储'}
               {mainView === 'result' && '生成结果'}
             </span>
           </div>
@@ -1365,7 +1467,11 @@ export default function App() {
                           <div className="absolute right-0 top-0 flex flex-col gap-2">
                             <button 
                               onClick={() => {
-                                if (confirm('确定要清空当前素材吗？')) setMaterial('');
+                                if (confirm('确定要清空当前素材吗？')) {
+                                  setMaterial('');
+                                  setToastMessage({ show: true, text: '素材已清空' });
+                                  setTimeout(() => setToastMessage({ show: false, text: '' }), 2500);
+                                }
                               }}
                               className="p-2 text-[#A1A1A1] hover:text-red-500 transition-colors bg-surface-low/50 backdrop-blur-sm rounded-full"
                               title="清空素材"
@@ -1391,27 +1497,58 @@ export default function App() {
                       
                       <div className="relative group/model">
                         <button className="px-4 py-1.5 bg-black dark:bg-white text-white dark:text-black border border-black dark:border-white rounded-full text-[12px] font-bold flex items-center gap-2 hover:opacity-80 transition-all">
-                          <Zap size={14} className="text-amber-500" />
-                          {selectedModel === 'gemini-2.0-flash' ? 'Gemini 2.0 Flash' : 'Gemini 1.5 Pro'}
+                          {selectedModel.includes('ollama') ? <Cpu size={14} className="text-blue-400" /> : selectedModel.includes('gemini') ? <Sparkles size={14} className="text-amber-500" /> : <Cloud size={14} className="text-teal-400" />}
+                          <span className="truncate max-w-[120px]">
+                            {llmConfig.providers.find(p => p.model === selectedModel)?.model || selectedModel || '选择模型'}
+                          </span>
+                          <ChevronRight size={14} className="rotate-90 opacity-50 ml-1" />
                         </button>
-                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 bg-white dark:bg-[#1A1A1A] border border-border-subtle rounded-2xl shadow-xl opacity-0 invisible group-hover/model:opacity-100 group-hover/model:visible transition-all z-50 p-2">
-                          <div className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] px-3 py-2">选择模型</div>
-                          <button 
-                            onClick={() => setSelectedModel('gemini-2.0-flash')}
-                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-between ${selectedModel === 'gemini-2.0-flash' ? 'bg-black text-white' : 'hover:bg-[#F7F7F7] dark:hover:bg-white/5 dark:text-white'}`}
-                          >
-                            <span>Gemini 2.0 Flash</span>
-                            {selectedModel === 'gemini-2.0-flash' && <Check size={12} />}
-                          </button>
-                          <button 
-                            onClick={() => setSelectedModel('gemini-1.5-pro')}
-                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-between ${selectedModel === 'gemini-1.5-pro' ? 'bg-black text-white' : 'hover:bg-[#F7F7F7] dark:hover:bg-white/5 dark:text-white'}`}
-                          >
-                            <span>Gemini 1.5 Pro</span>
-                            {selectedModel === 'gemini-1.5-pro' && <Check size={12} />}
-                          </button>
-                          <div className="h-px bg-border-subtle my-1" />
-                          <div className="px-3 py-2 text-[10px] text-[#A1A1A1]">更多模型即将支持 (Ollama/Claude)</div>
+                        
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-[280px] bg-white dark:bg-[#1A1A1A] border border-border-subtle rounded-3xl shadow-2xl opacity-0 invisible group-hover/model:opacity-100 group-hover/model:visible transition-all duration-200 z-50 overflow-hidden transform group-hover/model:translate-y-0 translate-y-2">
+                          <div className="flex items-center justify-between px-5 py-3 border-b border-border-subtle bg-surface-low dark:bg-white/5">
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">正在使用的 AI 模型</div>
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" />
+                          </div>
+                          <div className="max-h-[220px] overflow-y-auto custom-scrollbar p-2">
+                            {llmConfig.providers.length > 0 ? (
+                              Object.entries(
+                                llmConfig.providers.reduce((acc, p) => {
+                                  const name = p.name || (p.model.includes('gemini') ? 'Gemini' : p.model.includes('gpt') ? 'OpenAI' : p.model.includes('claude') ? 'Anthropic' : p.model.includes('deepseek') ? 'DeepSeek' : 'Ollama');
+                                  if (!acc[name]) acc[name] = [];
+                                  acc[name].push(p);
+                                  return acc;
+                                }, {} as Record<string, typeof llmConfig.providers>)
+                              ).map(([pName, models]) => (
+                                <div key={pName} className="mb-2 last:mb-0">
+                                  <div className="px-3 py-1 text-[9px] font-black uppercase tracking-[0.2em] text-[#A1A1A1]/60">
+                                    {pName}
+                                  </div>
+                                  {(models as any[]).map(p => (
+                                    <button 
+                                      key={p.model}
+                                      onClick={() => {
+                                        setSelectedModel(p.model);
+                                        localStorage.setItem('musewrite_selected_model', p.model);
+                                      }}
+                                      className={`w-full p-2.5 rounded-xl flex items-center justify-between transition-all group ${selectedModel === p.model ? 'bg-black text-white dark:bg-white dark:text-black shadow-md' : 'hover:bg-[#F7F7F7] dark:hover:bg-white/5'}`}
+                                    >
+                                      <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className={`p-1.5 rounded-md flex-shrink-0 ${selectedModel === p.model ? 'bg-white/20 dark:bg-black/10' : 'bg-surface-low dark:bg-white/5 text-[#A1A1A1]'}`}>
+                                          {p.name === 'ollama' ? <Cpu size={12} /> : <Cloud size={12} />}
+                                        </div>
+                                        <span className="text-left text-xs font-bold truncate">
+                                          {p.model}
+                                        </span>
+                                      </div>
+                                      {selectedModel === p.model && <CheckCircle2 size={14} className="flex-shrink-0" />}
+                                    </button>
+                                  ))}
+                                </div>
+                              ))
+                            ) : (
+                              <div className="py-6 text-center text-[#A1A1A1] text-xs font-bold">无可用模型</div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1420,7 +1557,7 @@ export default function App() {
                       <button 
                         onClick={handleDirectGenerate}
                         disabled={!material.trim() || isGenerating}
-                        className="group relative px-16 py-5 bg-black dark:bg-white text-white dark:text-black rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] dark:shadow-[0_20px_40px_-15px_rgba(255,255,255,0.1)] transition-all hover:scale-[1.05] active:scale-[0.98] disabled:opacity-50 overflow-hidden"
+                        className="relative group px-16 py-5 bg-black dark:bg-white text-white dark:text-black rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] dark:shadow-[0_20px_40px_-15px_rgba(255,255,255,0.1)] transition-all hover:scale-[1.05] active:scale-[0.98] disabled:opacity-50 overflow-hidden"
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                         <span className="relative flex items-center gap-3 text-lg font-bold tracking-tight">
@@ -1526,13 +1663,17 @@ export default function App() {
                 key="api-settings" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
                 className="h-full overflow-y-auto custom-scrollbar p-12"
               >
-                <div className="max-w-[640px] mx-auto space-y-12">
-                  {/* Removed main title header as it's repetitive with breadcrumbs */}
-
+                <div className={`max-w-[640px] mx-auto space-y-12 transition-all duration-500 ${isModelDropdownOpen ? 'pb-[500px]' : 'pb-12'}`}>
+                  {/* Breadcrumbs Title */}
+                  <div className="flex items-center gap-2 mb-8">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">MuseWrite</span>
+                    <ChevronRight size={10} className="text-[#A1A1A1]" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-black dark:text-white">API 设置</span>
+                  </div>
                   <div className="p-8 bg-surface-low rounded-3xl space-y-6">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-bold dark:text-white">API Key</h3>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-white">API Key</label>
                       </div>
                       <p className="text-xs text-[#666] dark:text-[#A1A1A1]">请输入您的模型 API Key。如果是本地 Ollama，则无需配置。</p>
                       <div className="flex items-center gap-2 mt-4">
@@ -1572,7 +1713,9 @@ export default function App() {
                     </div>
                     <div className="h-px bg-border-subtle" />
                     <div className="space-y-4">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-white">当前后端 API 服务</label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-white">后端服务</label>
+                      </div>
                         <div className="flex items-center gap-3 p-4 bg-white dark:bg-black/20 border border-border-subtle rounded-2xl">
                           <div className={`w-2 h-2 rounded-full ${isBackendConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                           <div className="flex-1">
@@ -1594,7 +1737,7 @@ export default function App() {
                       </div>
                       
                       {/* Dropdown Container */}
-                      <div className="relative">
+                      <div className="relative model-dropdown-container">
                         <button 
                           onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
                           className={`w-full p-5 bg-white dark:bg-black/20 border rounded-3xl flex items-center justify-between transition-all group ${isModelDropdownOpen ? 'border-brand ring-4 ring-brand/5 shadow-lg' : 'border-border-subtle hover:border-brand/40'}`}
@@ -1615,22 +1758,14 @@ export default function App() {
                           </div>
                         </button>
 
-                        {/* Searchable Inline Dropdown */}
                         <AnimatePresence>
                           {isModelDropdownOpen && (
-                            <>
-                              {/* Overlay to close on click outside */}
-                              <div 
-                                className="fixed inset-0 z-[60]" 
-                                onClick={() => setIsModelDropdownOpen(false)} 
-                              />
-                              
-                              <motion.div 
-                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                className="absolute top-full left-0 right-0 mt-3 p-3 bg-white dark:bg-[#1A1A1A] border border-border-subtle rounded-[32px] shadow-2xl z-[70] overflow-hidden flex flex-col max-h-[420px]"
-                              >
+                            <motion.div 
+                              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                              className="absolute top-full left-0 right-0 mt-3 p-3 bg-white dark:bg-[#1A1A1A] border border-border-subtle rounded-[32px] shadow-2xl z-[70] overflow-hidden flex flex-col max-h-[420px]"
+                            >
 
 
                                 <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 px-1 pb-2">
@@ -1698,8 +1833,6 @@ export default function App() {
                                   </div>
                                 </div>
                               </motion.div>
-
-                            </>
                           )}
                         </AnimatePresence>
                       </div>
@@ -1715,10 +1848,13 @@ export default function App() {
                 className="h-full overflow-y-auto custom-scrollbar p-12"
               >
                 <div className="max-w-[800px] mx-auto space-y-12">
-                  <div className="flex items-center gap-4">
-                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-full dark:text-white"><ChevronLeft size={20} /></button>
-                    <h2 className="text-2xl font-bold tracking-tight dark:text-white">平台管理</h2>
+                  {/* Breadcrumbs Title */}
+                  <div className="flex items-center gap-2 mb-8">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">MuseWrite</span>
+                    <ChevronRight size={10} className="text-[#A1A1A1]" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-black dark:text-white">平台管理</span>
                   </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {platformConfigs.map(p => (
                       <div key={p.id} className="p-6 border border-border-subtle rounded-3xl space-y-6 bg-[#FBFBFB] dark:bg-white/5">
@@ -1796,26 +1932,28 @@ export default function App() {
                 className="h-full overflow-y-auto custom-scrollbar p-12"
               >
                 <div className="max-w-[640px] mx-auto space-y-12">
-                  <div className="flex items-center gap-4">
-                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-full dark:text-white"><ChevronLeft size={20} /></button>
-                    <h2 className="text-2xl font-bold tracking-tight dark:text-white">数据存储</h2>
+                  {/* Breadcrumbs Title */}
+                  <div className="flex items-center gap-2 mb-8">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">MuseWrite</span>
+                    <ChevronRight size={10} className="text-[#A1A1A1]" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-black dark:text-white">数据存储</span>
                   </div>
                   <div className="space-y-6">
                     <div className="p-8 bg-surface-low rounded-3xl space-y-6">
-                      <div className="space-y-2">
-                        <h3 className="text-sm font-bold dark:text-white">本地备份</h3>
-                        <p className="text-xs text-[#666] dark:text-[#A1A1A1]">导出所有配置、人设、风格和历史记录到本地 JSON 文件。</p>
+                      <div className="space-y-6">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-white">本地备份</label>
+                        <p className="text-[10px] text-[#666] dark:text-[#A1A1A1]">导出所有配置、人设、风格和历史记录到本地 JSON 文件。</p>
                         <button 
                           onClick={handleExportData}
-                          className="mt-4 px-6 py-3 bg-brand text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center gap-2"
+                          className="mt-4 px-6 py-3 bg-brand text-black dark:text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center gap-2"
                         >
                           <Download size={16} /> 导出备份文件
                         </button>
                       </div>
                       <div className="h-px bg-border-subtle" />
-                      <div className="space-y-2">
-                        <h3 className="text-sm font-bold dark:text-white">恢复数据</h3>
-                        <p className="text-xs text-[#666] dark:text-[#A1A1A1]">从备份文件恢复所有数据。注意：这会覆盖当前所有数据。</p>
+                      <div className="space-y-6">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-white">恢复数据</label>
+                        <p className="text-[10px] text-[#666] dark:text-[#A1A1A1]">从备份文件恢复所有数据。注意：这会覆盖当前所有数据。</p>
                         <label className="mt-4 inline-flex items-center gap-2 px-6 py-3 border border-border-subtle rounded-xl font-bold text-sm hover:border-black dark:hover:border-white transition-all cursor-pointer">
                           <Upload size={16} /> 导入备份文件
                           <input type="file" accept=".json" onChange={handleImportData} className="hidden" />
@@ -1865,9 +2003,11 @@ export default function App() {
                 className="h-full overflow-y-auto custom-scrollbar p-12"
               >
                 <div className="max-w-[640px] mx-auto space-y-12">
-                  <div className="flex items-center gap-4">
-                    <button onClick={() => setMainView('editor')} className="p-2 hover:bg-[#F7F7F7] dark:hover:bg-white/5 rounded-full dark:text-white"><ChevronLeft size={20} /></button>
-                    <h2 className="text-2xl font-bold tracking-tight dark:text-white">关于 MuseWrite</h2>
+                  {/* Breadcrumbs Title */}
+                  <div className="flex items-center gap-2 mb-8">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">MuseWrite</span>
+                    <ChevronRight size={10} className="text-[#A1A1A1]" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-black dark:text-white">关于</span>
                   </div>
                   <div className="space-y-8">
                     <div className="flex flex-col items-center text-center space-y-4 py-12">
@@ -2138,7 +2278,8 @@ export default function App() {
                           </button>
                           <button 
                             onClick={() => {
-                              alert('发布功能：已模拟发布至 ' + (platformConfigs.find(p => p.id === activePreviewTab)?.name || '云端'));
+                              setToastMessage({ show: true, text: '发布功能：已模拟发布至 ' + (platformConfigs.find(p => p.id === activePreviewTab)?.name || '云端') });
+                              setTimeout(() => setToastMessage({ show: false, text: '' }), 2500);
                             }}
                             className="flex-1 py-3.5 bg-black text-white rounded-2xl font-bold hover:bg-[#333] transition-all shadow-lg shadow-black/10 flex items-center justify-center gap-2"
                           >

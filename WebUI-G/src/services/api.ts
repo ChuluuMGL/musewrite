@@ -10,6 +10,7 @@ export interface GenerationParams {
   style?: string;
   image?: boolean;
   model?: string;
+  apiKey?: string;
 }
 
 export interface GenerationResponse {
@@ -50,11 +51,14 @@ class ApiService {
    */
   async generateContent(params: GenerationParams): Promise<GenerationResponse> {
     try {
+      const userApiKey = typeof window !== 'undefined' ? localStorage.getItem('musewrite_user_api_key') : '';
+      const payload = { ...params, apiKey: userApiKey || undefined };
+
       // 1. 尝试连接 MuseWrite 后端
       const response = await fetch(`${this.baseUrl}/generate`, {
         method: 'POST',
         headers: this.headers,
-        body: JSON.stringify(params)
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {
@@ -188,6 +192,29 @@ class ApiService {
       console.error('Failed to fetch LLM config:', e);
     }
     return { success: false, llm: { providers: [], defaultProvider: '' } };
+  }
+
+  /**
+   * 测试 LLM 连接或执行一次性对话
+   */
+  async testLlmConnection(provider: string, model: string, apiKey: string, action: string = 'ping', prompt?: string) {
+    try {
+      const response = await fetch(`${this.baseUrl}/chat/test`, {
+        method: 'POST',
+        headers: this.headers,
+        body: JSON.stringify({
+          action,
+          provider,
+          model,
+          apiKey,
+          prompt
+        })
+      });
+      return await response.json();
+    } catch (e: any) {
+      console.error('Failed to test LLM connection:', e);
+      return { success: false, error: e.message || 'Network error' };
+    }
   }
 
   /**

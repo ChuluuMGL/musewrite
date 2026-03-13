@@ -119,11 +119,16 @@ function validateGenerateInput(body) {
     errors.push('model 必须是字符串');
   }
 
+  // apiKey 可选，必须是字符串
+  if (body.apiKey !== undefined && typeof body.apiKey !== 'string') {
+    errors.push('apiKey 必须是字符串');
+  }
+
   return errors;
 }
 
 async function handleGenerate(body, taskId = null) {
-  const { source, platform, info, checkFeedback, image, learnPreferences, model } = body;
+  const { source, platform, info, checkFeedback, image, learnPreferences, model, apiKey } = body;
 
   // 输入验证
   const errors = validateGenerateInput(body);
@@ -148,7 +153,7 @@ async function handleGenerate(body, taskId = null) {
   const QualityChecker = require(path.join(ROOT, 'lib/QualityChecker'));
   const checker = new QualityChecker();
 
-  const draft = await coordinator.generateForAccount(info || 'stone', source, platform || 'xiaohongshu', image, model);
+  const draft = await coordinator.generateForAccount(info || 'stone', source, platform || 'xiaohongshu', image, model, apiKey);
   const quality = checker.check(draft);
 
   const filename = `draft-${Date.now()}.json`;
@@ -498,7 +503,7 @@ server.listen(port, () => {
   console.log('╠════════════════════════════════════════════════════════╣');
   console.log(`║  API: http://localhost:${port}                            ║`);
   if (wsManager) {
-    console.log(`║  WebSocket: ws://localhost:18063                        ║`);
+    console.log('║  WebSocket: ws://localhost:18063                        ║');
   }
   console.log('║  认证：API Key (X-API-Key)                              ║');
   console.log('║  限流：60 次/分钟，1000 次/小时                            ║');
