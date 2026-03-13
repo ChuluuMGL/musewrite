@@ -6,12 +6,12 @@ const LLMProvider = require('../lib/LLMProvider');
 
 describe('LLMProvider', () => {
   describe('constructor', () => {
-    test('should use mock provider when no config available', () => {
+    test('should use mock or ollama provider when no config available', () => {
       const provider = new LLMProvider();
       const info = provider.getInfo();
 
-      expect(info.provider).toBe('mock');
-      expect(info.configured).toBe(false);
+      // 如果 Ollama 可用则使用 ollama，否则使用 mock
+      expect(['mock', 'ollama']).toContain(info.provider);
     });
 
     test('should use specified provider', () => {
@@ -23,6 +23,13 @@ describe('LLMProvider', () => {
 
       expect(info.provider).toBe('openai');
       expect(info.configured).toBe(true);
+    });
+
+    test('should use mock provider when explicitly specified', () => {
+      const provider = new LLMProvider({ provider: 'mock' });
+      const info = provider.getInfo();
+
+      expect(info.provider).toBe('mock');
     });
   });
 
