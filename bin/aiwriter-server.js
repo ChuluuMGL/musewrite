@@ -114,11 +114,16 @@ function validateGenerateInput(body) {
     errors.push('image 必须是布尔值');
   }
 
+  // model 可选，但必须是字符串
+  if (body.model !== undefined && typeof body.model !== 'string') {
+    errors.push('model 必须是字符串');
+  }
+
   return errors;
 }
 
 async function handleGenerate(body, taskId = null) {
-  const { source, platform, info, checkFeedback, image, learnPreferences } = body;
+  const { source, platform, info, checkFeedback, image, learnPreferences, model } = body;
 
   // 输入验证
   const errors = validateGenerateInput(body);
@@ -143,7 +148,7 @@ async function handleGenerate(body, taskId = null) {
   const QualityChecker = require(path.join(ROOT, 'lib/QualityChecker'));
   const checker = new QualityChecker();
 
-  const draft = await coordinator.generateForAccount(info || 'stone', source, platform || 'xiaohongshu', image);
+  const draft = await coordinator.generateForAccount(info || 'stone', source, platform || 'xiaohongshu', image, model);
   const quality = checker.check(draft);
 
   const filename = `draft-${Date.now()}.json`;

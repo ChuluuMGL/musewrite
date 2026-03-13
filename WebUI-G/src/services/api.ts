@@ -9,6 +9,7 @@ export interface GenerationParams {
   info?: string;
   style?: string;
   image?: boolean;
+  model?: string;
 }
 
 export interface GenerationResponse {
@@ -76,24 +77,37 @@ class ApiService {
   }
 
   private async fallbackGenerate(params: GenerationParams): Promise<GenerationResponse> {
-    if (!GEMINI_API_KEY) {
+    // 获取 API Key (优先使用用户在 UI 中输入的，其次是 GEMINI_API_KEY)
+    const userApiKey = typeof window !== 'undefined' ? localStorage.getItem('musewrite_user_api_key') : '';
+    const apiKey = userApiKey || GEMINI_API_KEY || (process.env as any).GOOGLE_API_KEY;
+    
+    if (!apiKey) {
       throw new Error('API_KEY_MISSING');
     }
 
-    const genAI = new GoogleGenAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-
+    const ai = new GoogleGenAI({ apiKey });
+    
+    // 构造提示词
     const prompt = `
       请根据以下信息创作内容：
       素材：${params.source}
       平台：${params.platform || '通用'}
       风格：${params.style || '默认'}
       
-      请以 JSON 格式返回结果，包含 title, content, tags (数组), score (0-100), wordCount 字段。
+      请直接以 JSON 格式返回结果（不要包含代码块标记），包含以下字段：
+      - title: 标题
+      - content: 正文
+      - tags: 标签数组
+      - score: 质量分数 (0-100)
+      - wordCount: 字数
     `;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [{ role: "user", parts: [{ text: prompt }] }] // Corrected SDK usage for contents
+    });
+
+    const text = response.text;
     const jsonStr = text.match(/\{[\s\S]*\}/)?.[0] || text;
     const data = JSON.parse(jsonStr);
 
@@ -102,10 +116,10 @@ class ApiService {
       draft: {
         title: data.title,
         content: data.content,
-        tags: data.tags
+        tags: data.tags || []
       },
       quality: {
-        score: data.score || 80,
+        score: data.score || 85,
         issues: [],
         warnings: []
       }
@@ -161,6 +175,19 @@ class ApiService {
       console.error('Failed to fetch styles:', e);
     }
     return { success: false, styles: [] };
+  }
+
+  /**
+   * 获取 LLM 配置 (支持多提供商)
+   */
+  async getLlmConfig() {
+    try {
+      const response = await fetch(`${this.baseUrl}/config/llm`, { headers: this.headers });
+      if (response.ok) return await response.json();
+    } catch (e) {
+      console.error('Failed to fetch LLM config:', e);
+    }
+    return { success: false, llm: { providers: [], defaultProvider: '' } };
   }
 
   /**

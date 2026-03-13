@@ -47,7 +47,10 @@ import {
   Layout,
   RefreshCw,
   CheckCircle2,
-  MoreVertical
+  MoreVertical,
+  Cpu,
+  Cloud,
+  Database
 } from 'lucide-react';
 
 // --- Types ---
@@ -83,16 +86,16 @@ type GenerationResult = {
 
 // --- Constants & Initial Data ---
 const PLATFORM_ICONS: Record<string, React.ReactNode> = {
-  p1: <BookOpen size={18} />,
-  p2: <Music size={18} />,
-  p3: <MessageCircle size={18} />,
-  p4: <MessageSquare size={18} />,
-  p5: <Send size={18} />,
-  p6: <Newspaper size={18} />,
-  p7: <Globe size={18} />,
-  p8: <Hash size={18} />,
-  p9: <Palette size={18} />,
-  p10: <Share2 size={18} />,
+  xiaohongshu: <BookOpen size={18} />,
+  douyin: <Music size={18} />,
+  zhihu: <MessageCircle size={18} />,
+  wechat: <MessageSquare size={18} />,
+  weibo: <Send size={18} />,
+  toutiao: <Newspaper size={18} />,
+  wordpress: <Globe size={18} />,
+  twitter: <Hash size={18} />,
+  instagram: <Palette size={18} />,
+  facebook: <Share2 size={18} />,
 };
 
 const STYLE_ICONS: Record<string, React.ReactNode> = {
@@ -115,22 +118,24 @@ const STYLE_PRESETS: StylePreset[] = [
 ];
 
 const PLATFORM_PRESETS: Platform[] = [
-  { id: 'p1', name: '小红书', iconId: 'p1', specs: { titleLimit: 20, contentLimit: 1000, tagLimit: 10, imageRatio: '3:4', imageCount: 9 } },
-  { id: 'p2', name: '抖音', iconId: 'p2', specs: { titleLimit: 50, contentLimit: 200, tagLimit: 5, imageRatio: '9:16', imageCount: 1 } },
-  { id: 'p3', name: '知乎', iconId: 'p3', specs: { titleLimit: 100, contentLimit: 5000, tagLimit: 5, imageRatio: '16:9', imageCount: 20 } },
-  { id: 'p4', name: '微信', iconId: 'p4', specs: { titleLimit: 64, contentLimit: 10000, tagLimit: 0, imageRatio: '2.35:1', imageCount: 1 } },
-  { id: 'p5', name: '微博', iconId: 'p5', specs: { titleLimit: 0, contentLimit: 2000, tagLimit: 10, imageRatio: '1:1', imageCount: 9 } },
-  { id: 'p6', name: '头条', iconId: 'p6', specs: { titleLimit: 30, contentLimit: 10000, tagLimit: 5, imageRatio: '16:9', imageCount: 3 } },
-  { id: 'p7', name: 'WordPress', iconId: 'p7', specs: { titleLimit: 100, contentLimit: 50000, tagLimit: 20, imageRatio: '16:9', imageCount: 10 } },
-  { id: 'p8', name: 'Twitter/X', iconId: 'p8', specs: { titleLimit: 0, contentLimit: 280, tagLimit: 3, imageRatio: '16:9', imageCount: 4 } },
-  { id: 'p9', name: 'Instagram', iconId: 'p9', specs: { titleLimit: 0, contentLimit: 2200, tagLimit: 30, imageRatio: '1:1', imageCount: 10 } },
+  { id: 'xiaohongshu', name: '小红书', iconId: 'xiaohongshu', specs: { titleLimit: 20, contentLimit: 1000, tagLimit: 10, imageRatio: '3:4', imageCount: 9 } },
+  { id: 'douyin', name: '抖音', iconId: 'douyin', specs: { titleLimit: 50, contentLimit: 200, tagLimit: 5, imageRatio: '9:16', imageCount: 1 } },
+  { id: 'zhihu', name: '知乎', iconId: 'zhihu', specs: { titleLimit: 100, contentLimit: 5000, tagLimit: 5, imageRatio: '16:9', imageCount: 20 } },
+  { id: 'wechat', name: '微信', iconId: 'wechat', specs: { titleLimit: 64, contentLimit: 10000, tagLimit: 0, imageRatio: '2.35:1', imageCount: 1 } },
+  { id: 'weibo', name: '微博', iconId: 'weibo', specs: { titleLimit: 0, contentLimit: 2000, tagLimit: 10, imageRatio: '1:1', imageCount: 9 } },
+  { id: 'toutiao', name: '头条', iconId: 'toutiao', specs: { titleLimit: 30, contentLimit: 10000, tagLimit: 5, imageRatio: '16:9', imageCount: 3 } },
+  { id: 'wordpress', name: 'WordPress', iconId: 'wordpress', specs: { titleLimit: 100, contentLimit: 50000, tagLimit: 20, imageRatio: '16:9', imageCount: 10 } },
+  { id: 'twitter', name: 'Twitter/X', iconId: 'twitter', specs: { titleLimit: 0, contentLimit: 280, tagLimit: 3, imageRatio: '16:9', imageCount: 4 } },
+  { id: 'instagram', name: 'Instagram', iconId: 'instagram', specs: { titleLimit: 0, contentLimit: 2200, tagLimit: 30, imageRatio: '1:1', imageCount: 10 } },
 ];
 
 
 
 export default function App() {
   // --- Global State ---
-  const [mainView, setMainView] = useState<MainView>('setup');
+  const [mainView, setMainView] = useState<MainView>(() => {
+    return localStorage.getItem('musewrite_setup_complete') === 'true' ? 'editor' : 'setup';
+  });
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('selection');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [setupStep, setSetupStep] = useState(1);
@@ -184,9 +189,16 @@ export default function App() {
     setIsGeneratingPlatform(prev => ({ ...prev, [platformId]: true }));
     
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error("API_KEY_MISSING");
+      // 优先使用用户在 UI 中输入的 API Key，其次是环境变量，最后是全局 window 对象
+      const apiKey = userApiKey || (process.env as any).GEMINI_API_KEY || (process.env as any).GOOGLE_API_KEY || (window as any).GEMINI_API_KEY;
+      
+      console.log(`Starting platform adaptation: ${platformId} using ${selectedModel}`);
+      
+      if (!apiKey) {
+        throw new Error("API_KEY_MISSING");
+      }
 
+      // @google/genai 1.29.0 SDK
       const ai = new GoogleGenAI({ apiKey });
       const platform = platformConfigs.find(p => p.id === platformId);
       
@@ -203,22 +215,37 @@ export default function App() {
         正文: ${editableResult.content}
         标签: ${editableResult.tags.join(', ')}
         
-        请严格遵守字数限制，如果是抖音或微博等短内容平台，请务必精简。
-        请以 JSON 格式返回结果，包含以下字段:
-        - title: 适配后的标题
-        - content: 适配后的正文
-        - tags: 适配后的标签（数组）
+        请严格遵守字数限制，如果是短内容平台，请务必精简。
+        请直接输出纯 JSON 对象，格式如下：
+        {
+          "title": "适配后的标题",
+          "content": "适配后的正文",
+          "tags": ["标签1", "标签2"]
+        }
+        不要包含 Markdown 代码块标记（如 \`\`\`json）。
       `;
 
+      // 使用 ai.models.generateContent 语法
       const response = await ai.models.generateContent({
-        model: selectedModel,
-        contents: prompt,
-        config: { responseMimeType: "application/json" }
+        model: selectedModel || 'gemini-2.0-flash',
+        contents: prompt
       });
 
+      if (!response || !response.text) {
+        throw new Error("AI_RETURNED_EMPTY_RESPONSE");
+      }
+
       const text = response.text;
+      console.log("Adaptation response text:", text);
+
       const jsonStr = text.match(/\{[\s\S]*\}/)?.[0] || text;
-      const result = JSON.parse(jsonStr);
+      let result;
+      try {
+        result = JSON.parse(jsonStr);
+      } catch (e) {
+        console.error("Failed to parse JSON adaptation content:", text);
+        throw new Error("INVALID_JSON");
+      }
       
       setEditableResult(prev => {
         if (!prev) return null;
@@ -254,6 +281,13 @@ export default function App() {
   const [editingStyle, setEditingStyle] = useState<StylePreset | null>(null);
 
   const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash');
+  const [userApiKey, setUserApiKey] = useState(() => localStorage.getItem('musewrite_user_api_key') || '');
+  const [tempApiKey, setTempApiKey] = useState(() => localStorage.getItem('musewrite_user_api_key') || '');
+  const [isTestingKey, setIsTestingKey] = useState(false);
+  const [llmConfig, setLlmConfig] = useState<{
+    providers: { name: string, model: string, configured: boolean }[],
+    defaultProvider: string
+  }>({ providers: [], defaultProvider: '' });
   const [selection, setSelection] = useState({ start: 0, end: 0, text: '' });
   const [isRefining, setIsRefining] = useState(false);
   const materialRef = useRef<HTMLTextAreaElement>(null);
@@ -368,17 +402,38 @@ export default function App() {
           }));
           
           setCustomStyles(prev => {
-            const combined = [...prev];
+            // 过滤掉已知的非法名称（兼容旧数据清理）
+            const filteredPrev = prev.filter(s => 
+              !['CONFIG', 'README', 'WRITING_STANDARDS', 'clients'].includes(s.name.toUpperCase()) &&
+              !['CONFIG', 'README', 'WRITING_STANDARDS'].includes(s.id)
+            );
+
+            const combined = [...filteredPrev];
             backendStyles.forEach(bs => {
+              // 再次确认不是系统文件
+              if (['CONFIG', 'README', 'WRITING_STANDARDS'].includes(bs.id)) return;
+
               // 检查是否已存在同名或同ID的风格（包括内置风格）
-              const exists = STYLE_PRESETS.find(p => p.name === bs.name || p.id === bs.id) || 
-                             combined.find(c => c.name === bs.name || c.id === bs.id);
-              if (!exists) {
+              const isPreset = STYLE_PRESETS.find(p => p.id === bs.id);
+              if (isPreset) return; // 优先保留硬编码的预设
+
+              const existingIndex = combined.findIndex(c => c.id === bs.id);
+              
+              if (existingIndex >= 0) {
+                // 如果已存在，用后端数据更新（主要是为了更新名称）
+                combined[existingIndex] = bs;
+              } else {
                 combined.push(bs);
               }
             });
             return combined;
           });
+        }
+
+        // Sync LLM Config
+        const llmRes = await apiService.getLlmConfig();
+        if (llmRes.success) {
+          setLlmConfig(llmRes.llm);
         }
       } catch (error) {
         console.warn('Backend sync failed, staying in offline mode:', error);
@@ -404,7 +459,7 @@ export default function App() {
     setIsRefining(true);
     
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = userApiKey || (process.env as any).GEMINI_API_KEY;
       if (!apiKey) throw new Error("API_KEY_MISSING");
 
       const ai = new GoogleGenAI({ apiKey });
@@ -430,7 +485,12 @@ export default function App() {
       setSelection({ start: 0, end: 0, text: '' });
     } catch (error: any) {
       console.error("Refinement failed:", error);
-      alert("修改失败，请重试。");
+      if (error.message === 'API_KEY_MISSING') {
+        alert("未配置 API Key，请在左下角设置中配置。");
+        setMainView('api-settings');
+      } else {
+        alert("修改失败，请重试。");
+      }
     } finally {
       setIsRefining(false);
     }
@@ -442,7 +502,7 @@ export default function App() {
     setMainView('refine-info');
     
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = userApiKey || (process.env as any).GEMINI_API_KEY;
       if (!apiKey) throw new Error("API_KEY_MISSING");
 
       const ai = new GoogleGenAI({ apiKey });
@@ -464,6 +524,10 @@ export default function App() {
       setExtractedInfo(response.text);
     } catch (error: any) {
       console.error("Extraction failed:", error);
+      if (error.message === 'API_KEY_MISSING') {
+        alert("未配置 API Key，请在左下角设置中配置。");
+        setMainView('api-settings');
+      }
       setExtractedInfo(material); // Fallback to raw material
     } finally {
       setIsExtracting(false);
@@ -479,7 +543,8 @@ export default function App() {
         platform: selectedPlatforms[0], // 暂时取第一个
         info: currentIdentity.name,
         style: currentStyle.name,
-        image: autoImage
+        image: autoImage,
+        model: selectedModel
       });
 
       if (!response.success) throw new Error("GENERATION_FAILED");
@@ -502,7 +567,12 @@ export default function App() {
       setMainView('result');
     } catch (error: any) {
       console.error("Generation failed:", error);
-      alert("生成失败，请检查网络或 API 配置。");
+      if (error.message === 'API_KEY_MISSING') {
+        alert("未配置 API Key，请点击左下角设置图标，在 API 设置中输入 Key。");
+        setMainView('api-settings');
+      } else {
+        alert(`生成失败: ${error.message || "请检查网络或配置"}`);
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -519,7 +589,8 @@ export default function App() {
         platform: selectedPlatforms[0],
         info: currentIdentity.name,
         style: currentStyle.name,
-        image: autoImage
+        image: autoImage,
+        model: selectedModel
       });
 
       if (!response.success) throw new Error("GENERATION_FAILED");
@@ -541,7 +612,12 @@ export default function App() {
       });
     } catch (error: any) {
       console.error("Direct generation failed:", error);
-      alert("生成失败，请重试。");
+      if (error.message === 'API_KEY_MISSING') {
+        alert("未配置 API Key，请在左下角设置中配置。");
+        setMainView('api-settings');
+      } else {
+        alert("生成失败，请重试。");
+      }
       setMainView('editor');
     } finally {
       setIsGenerating(false);
@@ -553,7 +629,7 @@ export default function App() {
     setIsModifyingImage(true);
     
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = userApiKey || (process.env as any).GEMINI_API_KEY;
       if (!apiKey) throw new Error("API_KEY_MISSING");
 
       const ai = new GoogleGenAI({ apiKey });
@@ -593,9 +669,45 @@ export default function App() {
       setImagePrompt('');
     } catch (error: any) {
       console.error("Image modification failed:", error);
-      alert("图片修改失败，请重试。");
+      if (error.message === 'API_KEY_MISSING') {
+        alert("未配置 API Key，请在左下角设置中配置。");
+        setMainView('api-settings');
+      } else {
+        alert("图片修改失败，请重试。");
+      }
     } finally {
       setIsModifyingImage(false);
+    }
+  };
+
+  const handleSaveApiKey = () => {
+    setUserApiKey(tempApiKey);
+    localStorage.setItem('musewrite_user_api_key', tempApiKey);
+    alert('API Key 已保存');
+  };
+
+  const handleTestConnection = async () => {
+    if (!tempApiKey.trim()) {
+      alert('请先输入 API Key');
+      return;
+    }
+    setIsTestingKey(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: tempApiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: 'ping'
+      });
+      if (response && response.text) {
+        alert('连接成功！API Key 有效。');
+      } else {
+        throw new Error('No response');
+      }
+    } catch (error: any) {
+      console.error('Test connection failed:', error);
+      alert(`连接失败：${error.message || '请检查网络或 API Key 是否正确'}`);
+    } finally {
+      setIsTestingKey(false);
     }
   };
 
@@ -1076,10 +1188,11 @@ export default function App() {
                     {identities.map(id => (
                       <div 
                         key={id.id}
-                        className={`group w-full p-3 border rounded-xl flex flex-col gap-2 transition-all ${selectedIdentityId === id.id ? 'border-black bg-white dark:bg-white/10 dark:border-white shadow-sm' : 'border-transparent hover:bg-[#F0F0F0] dark:hover:bg-white/5 text-[#666] dark:text-[#A1A1A1]'}`}
+                        onClick={() => setSelectedIdentityId(id.id)}
+                        className={`group w-full p-3 border rounded-xl flex flex-col gap-2 transition-all cursor-pointer ${selectedIdentityId === id.id ? 'border-black bg-white dark:bg-white/10 dark:border-white shadow-sm' : 'border-transparent hover:bg-[#F0F0F0] dark:hover:bg-white/5 text-[#666] dark:text-[#A1A1A1]'}`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold cursor-pointer dark:text-white" onClick={() => setSelectedIdentityId(id.id)}>{id.name}</span>
+                          <span className="text-sm font-bold dark:text-white">{id.name}</span>
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={(e) => { e.stopPropagation(); setEditingIdentity(id); setMainView('identity-form'); }} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-[#666] dark:text-[#A1A1A1] hover:text-black dark:hover:text-white"><Edit3 size={14} /></button>
                             <button onClick={(e) => { e.stopPropagation(); handleDeleteIdentity(id.id); }} className="p-1 hover:bg-red-50 rounded text-[#666] dark:text-[#A1A1A1] hover:text-red-500"><Trash2 size={14} /></button>
@@ -1106,10 +1219,11 @@ export default function App() {
                     {allStyles.map(s => (
                       <div 
                         key={s.id}
-                        className={`group w-full p-3 border rounded-xl flex flex-col gap-2 transition-all ${selectedStyleId === s.id ? 'border-black bg-white shadow-sm' : 'border-transparent hover:bg-[#F0F0F0] text-[#666]'}`}
+                        onClick={() => setSelectedStyleId(s.id)}
+                        className={`group w-full p-3 border rounded-xl flex flex-col gap-2 transition-all cursor-pointer ${selectedStyleId === s.id ? 'border-black bg-white shadow-sm' : 'border-transparent hover:bg-[#F0F0F0] text-[#666]'}`}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setSelectedStyleId(s.id)}>
+                          <div className="flex items-center gap-2">
                             <span className={`text-sm ${selectedStyleId === s.id ? 'text-black' : 'text-[#A1A1A1]'}`}>{STYLE_ICONS[s.iconId] || STYLE_ICONS.default}</span>
                             <span className="text-sm font-bold">{s.name}</span>
                           </div>
@@ -1299,25 +1413,17 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="flex flex-col items-center gap-4 pt-8">
+                    <div className="flex flex-col items-center gap-4 pt-12">
                       <button 
                         onClick={handleDirectGenerate}
                         disabled={!material.trim() || isGenerating}
-                        className="relative group px-12 py-4 bg-brand text-white dark:text-black shadow-xl transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+                        className="group relative px-16 py-5 bg-black dark:bg-white text-white dark:text-black rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] dark:shadow-[0_20px_40px_-15px_rgba(255,255,255,0.1)] transition-all hover:scale-[1.05] active:scale-[0.98] disabled:opacity-50 overflow-hidden"
                       >
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                        <span className="relative flex items-center gap-3">
-                          {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <ArrowUpRight size={18} />}
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                        <span className="relative flex items-center gap-3 text-lg font-bold tracking-tight">
+                          {isGenerating ? <Loader2 size={22} className="animate-spin" /> : <ArrowUpRight size={22} />}
                           {isGenerating ? '生成中...' : '立即生成'}
                         </span>
-                      </button>
-                      
-                      <button 
-                        onClick={handleExtractInfo}
-                        disabled={!material.trim() || isExtracting}
-                        className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] hover:text-black dark:hover:text-white transition-colors"
-                      >
-                        或：先提取核心信息 (四层卡片流)
                       </button>
                     </div>
                   </div>
@@ -1423,18 +1529,48 @@ export default function App() {
                     <h2 className="text-2xl font-bold tracking-tight dark:text-white">API 设置</h2>
                   </div>
                   <div className="p-8 bg-surface-low rounded-3xl space-y-6">
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-bold dark:text-white">Gemini API Key</h3>
-                      <p className="text-xs text-[#666] dark:text-[#A1A1A1]">当前使用平台托管的 API Key，无需手动配置。</p>
-                      <div className="flex items-center gap-2 mt-4">
-                        <div className="flex-1 px-4 py-2 bg-white dark:bg-black/20 border border-border-subtle rounded-lg font-mono text-xs text-[#A1A1A1]">
-                          ••••••••••••••••••••••••••••••••
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold dark:text-white">API Key</h3>
+                        <div className="flex gap-2">
+                          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 hover:underline">Gemini</a>
+                          <span className="text-[10px] text-[#D1D1D1]">|</span>
+                          <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 hover:underline">OpenAI</a>
                         </div>
+                      </div>
+                      <p className="text-xs text-[#666] dark:text-[#A1A1A1]">请输入您的模型 API Key。如果是本地 Ollama，则无需配置。</p>
+                      <div className="flex items-center gap-2 mt-4">
+                        <input 
+                          type="password"
+                          value={tempApiKey}
+                          onChange={(e) => setTempApiKey(e.target.value)}
+                          placeholder="在此粘贴您的 API Provider Key"
+                          className="flex-1 px-4 py-2.5 bg-white dark:bg-black/20 border border-border-subtle rounded-xl font-mono text-xs outline-none focus:border-brand dark:text-white"
+                        />
+                        {tempApiKey && (
+                          <button 
+                            onClick={() => { setTempApiKey(''); }}
+                            className="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-all"
+                            title="清除"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
                         <button 
-                          onClick={() => { navigator.clipboard.writeText('GEMINI_API_KEY_PLACEHOLDER'); alert('API Key 已复制到剪贴板'); }}
-                          className="p-2 hover:bg-white dark:hover:bg-white/5 rounded-lg border border-transparent hover:border-[#EDEDED] dark:hover:border-white/10 transition-all"
+                          onClick={handleSaveApiKey}
+                          className="flex-1 py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-xl text-xs font-bold hover:opacity-90 transition-all"
                         >
-                          <Copy size={14} />
+                          保存配置
+                        </button>
+                        <button 
+                          onClick={handleTestConnection}
+                          disabled={isTestingKey}
+                          className="flex-1 py-2.5 bg-white dark:bg-black/20 border border-border-subtle rounded-xl text-xs font-bold hover:bg-black/5 dark:hover:bg-white/5 transition-all flex items-center justify-center gap-2"
+                        >
+                          {isTestingKey ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} className="text-amber-500" />}
+                          连通性测试
                         </button>
                       </div>
                     </div>
@@ -1450,17 +1586,73 @@ export default function App() {
                         </div>
                       </div>
                     <div className="h-px bg-border-subtle" />
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-bold dark:text-white">模型选择</h3>
-                      <div className="p-4 bg-white dark:bg-black/20 border border-black dark:border-white rounded-xl flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Zap size={16} className="text-amber-500" />
-                          <div>
-                            <div className="text-sm font-bold">Gemini 3 Flash</div>
-                            <div className="text-[10px] text-[#666] dark:text-[#A1A1A1]">速度极快，适合日常创作</div>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold dark:text-white">模型选择</h3>
+                        {isBackendConnected && (
+                          <div className="text-[10px] text-[#A1A1A1] flex items-center gap-1">
+                            <CheckCircle2 size={10} className="text-green-500" />
+                            同步自后端
                           </div>
-                        </div>
-                        <Check size={16} />
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-1 gap-3">
+                        {isBackendConnected && llmConfig.providers.length > 0 ? (
+                          llmConfig.providers.map(p => (
+                            <button 
+                              key={p.name}
+                              onClick={() => setSelectedModel(p.model)}
+                              className={`p-4 rounded-2xl border transition-all flex items-center justify-between group ${selectedModel === p.model ? 'border-black bg-white dark:border-white dark:bg-white/10' : 'border-transparent bg-white dark:bg-black/20 hover:border-black/10 dark:hover:border-white/10'}`}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className={`p-2 rounded-xl ${selectedModel === p.model ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-surface-low dark:bg-white/5'}`}>
+                                  {p.name === 'ollama' ? <Cpu size={18} /> : 
+                                   p.name === 'openai-compatible' ? <Database size={18} /> : 
+                                   <Cloud size={18} />}
+                                </div>
+                                <div className="text-left">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-bold dark:text-white capitalize">{p.name === 'gemini' ? 'Google Gemini' : p.name}</span>
+                                    {p.configured && <span className="px-1.5 py-0.5 bg-green-500/10 text-green-500 text-[8px] font-bold rounded-full uppercase tracking-tighter">已配置</span>}
+                                  </div>
+                                  <div className="text-[10px] text-[#666] dark:text-[#A1A1A1] mt-0.5">{p.model}</div>
+                                </div>
+                              </div>
+                              {selectedModel === p.model && <Check size={16} className="text-black dark:text-white" />}
+                            </button>
+                          ))
+                        ) : (
+                          <>
+                            <button 
+                              onClick={() => setSelectedModel('gemini-2.0-flash')}
+                              className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${selectedModel === 'gemini-2.0-flash' ? 'border-black bg-white dark:border-white dark:bg-white/10' : 'border-transparent bg-white dark:bg-black/20 hover:border-black/10 dark:hover:border-white/10'}`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <Zap size={16} className="text-amber-500" />
+                                <div className="text-left">
+                                  <div className="text-sm font-bold dark:text-white">Gemini 2.0 Flash (默认)</div>
+                                  <div className="text-[10px] text-[#666] dark:text-[#A1A1A1]">速度极快，性能平衡，推荐日常使用</div>
+                                </div>
+                              </div>
+                              {selectedModel === 'gemini-2.0-flash' && <Check size={16} className="text-black dark:text-white" />}
+                            </button>
+                            
+                            <button 
+                              onClick={() => setSelectedModel('gemini-1.5-pro')}
+                              className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${selectedModel === 'gemini-1.5-pro' ? 'border-black bg-white dark:border-white dark:bg-white/10' : 'border-transparent bg-white dark:bg-black/20 hover:border-black/10 dark:hover:border-white/10'}`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <Sparkles size={16} className="text-blue-500" />
+                                <div className="text-left">
+                                  <div className="text-sm font-bold dark:text-white">Gemini 1.5 Pro</div>
+                                  <div className="text-[10px] text-[#666] dark:text-[#A1A1A1]">逻辑推导能力更强，适合复杂深度创作</div>
+                                </div>
+                              </div>
+                              {selectedModel === 'gemini-1.5-pro' && <Check size={16} className="text-black dark:text-white" />}
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
