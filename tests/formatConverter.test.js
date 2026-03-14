@@ -2,55 +2,55 @@
  * FormatConverter Tests
  */
 
-const FormatConverter = require("../lib/FormatConverter")
+const FormatConverter = require('../lib/FormatConverter');
 
-describe("FormatConverter", () => {
-  let converter
+describe('FormatConverter', () => {
+  let converter;
 
   beforeEach(() => {
-    converter = new FormatConverter()
-  })
+    converter = new FormatConverter();
+  });
 
-  describe("convertToMarkdown", () => {
-    test("should convert draft to markdown", () => {
+  describe('convertToMarkdown', () => {
+    test('should convert draft to markdown', () => {
       const draft = {
-        title: "测试标题",
-        content: "测试内容",
-        tags: ["标签1", "标签2"],
-      }
+        title: '测试标题',
+        content: '测试内容',
+        tags: ['标签1', '标签2']
+      };
 
-      const result = converter.convertToMarkdown(draft)
+      const result = converter.convertToMarkdown(draft);
 
-      expect(result).toContain("# 测试标题")
-      expect(result).toContain("测试内容")
-    })
-  })
+      expect(result).toContain('# 测试标题');
+      expect(result).toContain('测试内容');
+    });
+  });
 
-  describe("convertToHTML", () => {
-    test("should convert draft to HTML", () => {
+  describe('convertToHTML', () => {
+    test('should convert draft to HTML', () => {
       const draft = {
-        title: "测试标题",
-        content: "测试内容",
-        tags: ["标签1"],
-      }
+        title: '测试标题',
+        content: '测试内容',
+        tags: ['标签1']
+      };
 
-      const result = converter.convertToHTML(draft)
+      const result = converter.convertToHTML(draft);
 
-      expect(result).toContain("<h1>")
-      expect(result).toContain("测试标题")
-    })
-  })
+      expect(result).toContain('<h1>');
+      expect(result).toContain('测试标题');
+    });
+  });
 
-  describe("convertToJSON", () => {
-    test("should convert draft to JSON", () => {
+  describe('convertToJSON', () => {
+    test('should convert draft to JSON', () => {
       const draft = {
-        title: "测试标题",
-        content: "测试内容",
-      }
+        title: '测试标题',
+        content: '测试内容'
+      };
 
-      const result = converter.convertToJSON(draft)
+      const result = converter.convertToJSON(draft);
 
-      expect(() => JSON.parse(result)).not.toThrow()
-    })
-  })
-})
+      expect(() => JSON.parse(result)).not.toThrow();
+    });
+  });
+});
