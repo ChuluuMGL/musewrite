@@ -5,35 +5,35 @@
  * 用法: aiwriter-dashboard
  */
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
+const http = require("http")
+const fs = require("fs")
+const path = require("path")
 
-const PORT = 18063;
-const API_URL = 'http://localhost:18062';
+const PORT = 18063
+const API_URL = "http://localhost:18062"
 
 const server = http.createServer(async (req, res) => {
-  if (req.url !== '/') {
-    res.writeHead(404);
-    res.end('Not Found');
-    return;
+  if (req.url !== "/") {
+    res.writeHead(404)
+    res.end("Not Found")
+    return
   }
 
   // 获取 API 状态
-  let status = {};
-  let tasks = [];
+  let status = {}
+  let tasks = []
   try {
-    const statusRes = await fetch(`${API_URL}/api/v1/status`);
-    status = await statusRes.json();
+    const statusRes = await fetch(`${API_URL}/api/v1/status`)
+    status = await statusRes.json()
 
-    const tasksRes = await fetch(`${API_URL}/api/v1/tasks?limit=10`);
-    const tasksData = await tasksRes.json();
-    tasks = tasksData.tasks || [];
+    const tasksRes = await fetch(`${API_URL}/api/v1/tasks?limit=10`)
+    const tasksData = await tasksRes.json()
+    tasks = tasksData.tasks || []
   } catch (e) {
-    console.error('Failed to fetch API status:', e.message);
+    console.error("Failed to fetch API status:", e.message)
   }
 
-  res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+  res.writeHead(200, {"Content-Type": "text/html; charset=utf-8"})
   res.end(`<!DOCTYPE html>
 <html>
 <head>
@@ -63,7 +63,7 @@ const server = http.createServer(async (req, res) => {
   <div class="card">
     <h2>📊 服务状态</h2>
     <div class="stat">
-      <div class="stat-value">${status.version || 'v0.6.0'}</div>
+      <div class="stat-value">${status.version || "v0.6.0"}</div>
       <div class="stat-label">版本</div>
     </div>
     <div class="stat">
@@ -101,7 +101,11 @@ const server = http.createServer(async (req, res) => {
         </tr>
       </thead>
       <tbody>
-        ${tasks.length > 0 ? tasks.map(t => `
+        ${
+          tasks.length > 0
+            ? tasks
+                .map(
+                  (t) => `
           <tr>
             <td>${t.id.substring(0, 25)}...</td>
             <td>${t.type}</td>
@@ -109,7 +113,11 @@ const server = http.createServer(async (req, res) => {
             <td>${t.progress || 0}%</td>
             <td>${new Date(t.createdAt).toLocaleString()}</td>
           </tr>
-        `).join('') : '<tr><td colspan="5">暂无任务</td></tr>'}
+        `
+                )
+                .join("")
+            : '<tr><td colspan="5">暂无任务</td></tr>'
+        }
       </tbody>
     </table>
   </div>
@@ -117,14 +125,24 @@ const server = http.createServer(async (req, res) => {
   <div class="card">
     <h2>📝 最近请求日志</h2>
     <div class="log">
-${fs.existsSync('logs/requests.log') ? fs.readFileSync('logs/requests.log', 'utf-8').split('\n').reverse().slice(0, 20).map(line => {
-    try {
-      const log = JSON.parse(line);
-      return `<div>[${log.timestamp}] ${log.method} ${log.url} → ${log.statusCode} (${log.durationMs}ms)</div>`;
-    } catch (e) {
-      return '';
-    }
-  }).join('') : '<div>暂无日志</div>'}
+${
+  fs.existsSync("logs/requests.log")
+    ? fs
+        .readFileSync("logs/requests.log", "utf-8")
+        .split("\n")
+        .reverse()
+        .slice(0, 20)
+        .map((line) => {
+          try {
+            const log = JSON.parse(line)
+            return `<div>[${log.timestamp}] ${log.method} ${log.url} → ${log.statusCode} (${log.durationMs}ms)</div>`
+          } catch (e) {
+            return ""
+          }
+        })
+        .join("")
+    : "<div>暂无日志</div>"
+}
     </div>
   </div>
   
@@ -142,8 +160,8 @@ ${fs.existsSync('logs/requests.log') ? fs.readFileSync('logs/requests.log', 'utf
     setTimeout(() => location.reload(), 10000);
   </script>
 </body>
-</html>`);
-});
+</html>`)
+})
 
 server.listen(PORT, () => {
   console.log(`
@@ -153,5 +171,5 @@ server.listen(PORT, () => {
 ║  URL: http://localhost:${PORT}                            ║
 ║  自动刷新：10 秒                                          ║
 ╚════════════════════════════════════════════════════════╝
-`);
-});
+`)
+})

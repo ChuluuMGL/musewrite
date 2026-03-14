@@ -1578,13 +1578,14 @@ export default function App() {
                       <div 
                         key={id.id}
                         onClick={() => setSelectedIdentityId(id.id)}
-                        className={`group w-full p-3 border rounded-xl flex flex-col gap-2 transition-all cursor-pointer ${selectedIdentityId === id.id ? 'border-black bg-white dark:bg-white/10 dark:border-white shadow-sm' : 'border-transparent hover:bg-[#F0F0F0] dark:hover:bg-white/5 text-[#666] dark:text-[#A1A1A1]'}`}
+                        onDoubleClick={() => { setEditingIdentity(id); setMainView('identity-form'); }}
+                        className={`group w-full p-3 border rounded-xl flex flex-col gap-2 transition-all cursor-pointer select-none ${selectedIdentityId === id.id ? 'border-black bg-white dark:bg-white/10 dark:border-white shadow-sm' : 'border-transparent hover:bg-[#F0F0F0] dark:hover:bg-white/5 text-[#666] dark:text-[#A1A1A1]'}`}
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-bold dark:text-white">{id.name}</span>
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={(e) => { e.stopPropagation(); setEditingIdentity(id); setMainView('identity-form'); }} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-[#666] dark:text-[#A1A1A1] hover:text-black dark:hover:text-white"><Edit3 size={14} /></button>
-                            <button onClick={(e) => { e.stopPropagation(); handleDeleteIdentity(id.id); }} className="p-1 hover:bg-red-50 rounded text-[#666] dark:text-[#A1A1A1] hover:text-red-500"><Trash2 size={14} /></button>
+                            <button onClick={(e) => { e.stopPropagation(); handleDeleteIdentity(id.id); }} className="p-1 hover:bg-red-50 dark:hover:bg-red-500/10 rounded text-[#666] dark:text-[#A1A1A1] hover:text-red-500"><Trash2 size={14} /></button>
                           </div>
                         </div>
                         <p className="text-[10px] line-clamp-2 text-[#A1A1A1]">{id.bio}</p>
@@ -1609,16 +1610,17 @@ export default function App() {
                       <div 
                         key={s.id}
                         onClick={() => setSelectedStyleId(s.id)}
-                        className={`group w-full p-3 border rounded-xl flex flex-col gap-2 transition-all cursor-pointer ${selectedStyleId === s.id ? 'border-black bg-white shadow-sm' : 'border-transparent hover:bg-[#F0F0F0] text-[#666]'}`}
+                        onDoubleClick={() => { setEditingStyle(s); setMainView('style-form'); }}
+                        className={`group w-full p-3 border rounded-xl flex flex-col gap-2 transition-all cursor-pointer select-none ${selectedStyleId === s.id ? 'border-black bg-white dark:bg-white/10 dark:border-white shadow-sm' : 'border-transparent hover:bg-[#F0F0F0] dark:hover:bg-white/5 text-[#666] dark:text-[#A1A1A1]'}`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className={`text-sm ${selectedStyleId === s.id ? 'text-black' : 'text-[#A1A1A1]'}`}>{STYLE_ICONS[s.iconId] || STYLE_ICONS.default}</span>
-                            <span className="text-sm font-bold">{s.name}</span>
+                            <span className={`text-sm ${selectedStyleId === s.id ? 'text-black dark:text-white' : 'text-[#A1A1A1]'}`}>{STYLE_ICONS[s.iconId] || STYLE_ICONS.default}</span>
+                            <span className={`text-sm font-bold ${selectedStyleId === s.id ? 'dark:text-white' : ''}`}>{s.name}</span>
                           </div>
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={(e) => { e.stopPropagation(); setEditingStyle(s); setMainView('style-form'); }} className="p-1 hover:bg-black/5 rounded text-[#666] hover:text-black"><Edit3 size={14} /></button>
-                            {s.id.startsWith('c') && <button onClick={(e) => { e.stopPropagation(); handleDeleteStyle(s.id); }} className="p-1 hover:bg-red-50 rounded text-[#666] hover:text-red-500"><Trash2 size={14} /></button>}
+                            <button onClick={(e) => { e.stopPropagation(); setEditingStyle(s); setMainView('style-form'); }} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded text-[#666] dark:text-[#A1A1A1] hover:text-black dark:hover:text-white"><Edit3 size={14} /></button>
+                            {s.id.startsWith('c') && <button onClick={(e) => { e.stopPropagation(); handleDeleteStyle(s.id); }} className="p-1 hover:bg-red-50 dark:hover:bg-red-500/10 rounded text-[#666] dark:text-[#A1A1A1] hover:text-red-500"><Trash2 size={14} /></button>}
                           </div>
                         </div>
                         <p className="text-[10px] line-clamp-2 text-[#A1A1A1]">{s.desc}</p>
