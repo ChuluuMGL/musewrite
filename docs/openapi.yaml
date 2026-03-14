@@ -46,6 +46,8 @@ tags:
     description: 卡片管理相关接口
   - name: Draft Management
     description: 草稿管理相关接口
+  - name: CreatorTwin
+    description: 创作者风格学习和个性化生成
   - name: Publishing
     description: 平台发布相关接口
   - name: Feedback
@@ -722,6 +724,219 @@ paths:
                       $ref: '#/components/schemas/Review'
                   total:
                     type: integer
+
+  # ==================== CreatorTwin 风格学习 ====================
+  /api/v1/twin/analyze:
+    post:
+      tags: [CreatorTwin]
+      summary: 分析写作风格
+      description: 上传历史文章，AI 学习您的写作风格
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - personaId
+                - articles
+              properties:
+                personaId:
+                  type: string
+                  description: 人设ID
+                articles:
+                  type: array
+                  items:
+                    type: string
+                  description: 历史文章内容数组
+            example:
+              personaId: my-style
+              articles:
+                - "这是我的第一篇文章..."
+                - "这是我的第二篇文章..."
+      responses:
+        '200':
+          description: 分析成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  personaId:
+                    type: string
+                  articlesAnalyzed:
+                    type: integer
+                  fingerprint:
+                    type: object
+                    properties:
+                      version:
+                        type: string
+                      stats:
+                        type: object
+                      language:
+                        type: object
+                      emotion:
+                        type: object
+                  summary:
+                    type: string
+
+  /api/v1/twin/{personaId}:
+    get:
+      tags: [CreatorTwin]
+      summary: 获取孪生信息
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: personaId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 孪生信息
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  personaId:
+                    type: string
+                  confidence:
+                    type: number
+                  preferences:
+                    type: object
+                  summary:
+                    type: string
+
+  /api/v1/twin/generate:
+    post:
+      tags: [CreatorTwin]
+      summary: 用学习风格生成内容
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - personaId
+                - prompt
+              properties:
+                personaId:
+                  type: string
+                prompt:
+                  type: string
+                  description: 生成提示
+                platform:
+                  type: string
+                  description: 目标平台
+            example:
+              personaId: my-style
+              prompt: 写一篇关于AI发展趋势的文章
+              platform: xiaohongshu
+      responses:
+        '200':
+          description: 生成成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  personaId:
+                    type: string
+                  platform:
+                    type: string
+                  content:
+                    type: string
+                  generatedAt:
+                    type: string
+                    format: date-time
+
+  /api/v1/twin/feedback:
+    post:
+      tags: [CreatorTwin]
+      summary: 记录反馈学习
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - personaId
+                - originalContent
+                - editedContent
+              properties:
+                personaId:
+                  type: string
+                originalContent:
+                  type: string
+                editedContent:
+                  type: string
+                rating:
+                  type: number
+                  minimum: 1
+                  maximum: 5
+      responses:
+        '200':
+          description: 反馈记录成功
+
+  /api/v1/twin/{personaId}:
+    delete:
+      tags: [CreatorTwin]
+      summary: 重置孪生
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: personaId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 重置成功
+
+  /api/v1/twins:
+    get:
+      tags: [CreatorTwin]
+      summary: 列出所有孪生
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: 孪生列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  twins:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        personaId:
+                          type: string
+                        confidence:
+                          type: number
+                        articlesAnalyzed:
+                          type: integer
 
   # ==================== 平台发布 ====================
   /api/v1/publish:

@@ -1,3 +1,5 @@
+import { RichTextEditor } from "./components/RichTextEditor";
+import { marked } from "marked";
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
@@ -61,6 +63,12 @@ import {
   Link2,
   User,
   ChevronDown,
+  Monitor,
+  CheckCircle,
+  Share,
+  Heart,
+  Star,
+  MoreHorizontal
 } from 'lucide-react';
 
 // --- Types ---
@@ -582,6 +590,48 @@ export default function App() {
       }
     } finally {
       setIsRefining(false);
+    }
+  };
+
+  const handleEditorAiAction = async (action: string, selectedText: string): Promise<string | null> => {
+    let instruction = '';
+    if (action === 'improve') instruction = '润色并优化这段选中内容，使其表达更专业自然。';
+    if (action === 'expand') instruction = '扩写这段选中内容，增加生动的细节和具体的背景信息。';
+    if (action === 'shorten') instruction = '精简这段选中内容，删减冗余词汇，使其更洗练有力。';
+    
+    if (!instruction) return null;
+    
+    try {
+      const apiKey = userApiKey || (process.env as any).GEMINI_API_KEY || '';
+      const parts = selectedModel.split('-');
+      const providerStr = parts[0] === 'gemini' ? 'gemini' : parts[0] === 'ollama' ? 'ollama' : parts[0] === 'deepseek' ? 'deepseek' : 'openai';
+      
+      const prompt = `
+        你是一个专业的写作助手。请根据以下指令修改选中的文字。
+        
+        原文字: ${selectedText}
+        指令: ${instruction}
+        
+        请只返回修改后的文字，不要包含任何解释。
+      `;
+
+      const response = await apiService.testLlmConnection(providerStr, selectedModel, apiKey, 'adapt', prompt);
+
+      if (!response || !response.success || !response.rawResponse) {
+        throw new Error(response?.error || '生成失败');
+      }
+
+      return response.rawResponse as string;
+    } catch (error: any) {
+      console.error("Editor AI Action failed:", error);
+      if (error.message === 'API_KEY_MISSING') {
+        setToastMessage({ show: true, text: '操作失败：未配置 API Key' });
+        setTimeout(() => setToastMessage({ show: false, text: '' }), 3500);
+      } else {
+        setToastMessage({ show: true, text: '提取失败，请重试: ' + error.message });
+        setTimeout(() => setToastMessage({ show: false, text: '' }), 3500);
+      }
+      return null;
     }
   };
 
@@ -2881,29 +2931,29 @@ export default function App() {
                                 </span>
                               )}
                             </div>
-                            <textarea 
-                              rows={12}
-                              value={activePreviewTab === 'master' ? editableResult.content : (editableResult.platformOverrides?.[activePreviewTab]?.content || editableResult.content)}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (activePreviewTab === 'master') {
-                                  setEditableResult(prev => prev ? { ...prev, content: val } : null);
-                                } else {
-                                  setEditableResult(prev => {
-                                    if (!prev) return null;
-                                    const overrides = prev.platformOverrides || {};
-                                    return {
-                                      ...prev,
-                                      platformOverrides: {
-                                        ...overrides,
-                                        [activePreviewTab]: { ...(overrides[activePreviewTab] || { title: prev.title, content: prev.content, tags: prev.tags }), content: val }
-                                      }
-                                    };
-                                  });
-                                }
-                              }}
-                              className="w-full text-sm text-[#333] dark:text-[#E0E0E0] leading-relaxed outline-none bg-transparent resize-none border-b border-transparent focus:border-black/10 dark:focus:border-white/10"
-                            />
+                            <div className="border border-border-subtle rounded-2xl bg-white dark:bg-black/20 overflow-hidden focus-within:border-black/20 dark:focus-within:border-white/20 transition-colors">
+                              <RichTextEditor
+                                value={activePreviewTab === 'master' ? editableResult.content : (editableResult.platformOverrides?.[activePreviewTab]?.content || editableResult.content)}
+                                onChange={(val) => {
+                                  if (activePreviewTab === 'master') {
+                                    setEditableResult(prev => prev ? { ...prev, content: val } : null);
+                                  } else {
+                                    setEditableResult(prev => {
+                                      if (!prev) return null;
+                                      const overrides = prev.platformOverrides || {};
+                                      return {
+                                        ...prev,
+                                        platformOverrides: {
+                                          ...overrides,
+                                          [activePreviewTab]: { ...(overrides[activePreviewTab] || { title: prev.title, content: prev.content, tags: prev.tags }), content: val }
+                                        }
+                                      };
+                                    });
+                                  }
+                                }}
+                                onAiAction={handleEditorAiAction}
+                              />
+                            </div>
                           </div>
 
                           <div className="space-y-4">
@@ -3015,6 +3065,85 @@ export default function App() {
 
                       <div className="lg:col-span-5 space-y-8">
                         <div className="sticky top-12 space-y-8">
+                          {activePreviewTab === 'xiaohongshu' && (
+                            <div className="w-full max-w-[320px] mx-auto bg-white dark:bg-black rounded-[40px] border-[8px] border-[#ededed] dark:border-[#333] shadow-2xl overflow-hidden flex flex-col relative h-[640px]">
+                              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-[#ededed] dark:bg-[#333] rounded-b-3xl z-50"></div>
+                              <div className="flex items-center justify-between px-4 py-8 border-b border-black/5 dark:border-white/5 bg-white dark:bg-black z-40">
+                                <span className="w-6"><ChevronLeft size={20} className="text-[#333] dark:text-[#A1A1A1]" /></span>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden"><img src={avatarUrl} className="w-full h-full object-cover" /></div>
+                                  <span className="text-xs font-bold dark:text-white">{currentIdentity.name || '作者'}</span>
+                                </div>
+                                <span className="w-6 flex justify-end"><Share size={18} className="text-[#333] dark:text-[#A1A1A1]" /></span>
+                              </div>
+                              <div className="flex-1 overflow-y-auto custom-scrollbar bg-white dark:bg-black relative">
+                                {editableResult.imageUrl ? (
+                                  <div className="w-full aspect-[3/4]">
+                                    <img src={editableResult.imageUrl} className="w-full h-full object-cover" />
+                                  </div>
+                                ) : (
+                                  <div className="w-full aspect-[3/4] bg-slate-100 dark:bg-white/5 flex items-center justify-center">
+                                    <div className="text-center text-[#A1A1A1] text-xs font-bold line-clamp-1">{platformConfigs.find(p => p.id === 'xiaohongshu')?.specs.imageRatio || '配图'}</div>
+                                  </div>
+                                )}
+                                <div className="p-4 space-y-3 pb-8">
+                                  <h3 className="text-base font-bold text-black dark:text-white leading-snug">
+                                    {editableResult.platformOverrides?.['xiaohongshu']?.title || editableResult.title}
+                                  </h3>
+                                  <div 
+                                    className="text-sm text-[#333] dark:text-[#E0E0E0] leading-relaxed prose prose-sm dark:prose-invert max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: marked.parse(editableResult.platformOverrides?.['xiaohongshu']?.content || editableResult.content) as string }}
+                                  />
+                                  <div className="flex flex-wrap gap-1.5 pt-2">
+                                    {(editableResult.platformOverrides?.['xiaohongshu']?.tags || editableResult.tags).map(t => (
+                                      <span key={t} className="text-[#274079] dark:text-blue-400 text-[13px] font-medium">#{t}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="p-4 border-t border-black/5 dark:border-white/5 bg-white dark:bg-black flex items-center justify-between shrink-0">
+                                <div className="flex-1 bg-black/5 dark:bg-white/10 rounded-full px-4 py-2 text-xs text-[#A1A1A1]">说点什么...</div>
+                                <div className="flex gap-4 ml-4 text-[#333] dark:text-[#A1A1A1]">
+                                  <Heart size={20} />
+                                  <Star size={20} />
+                                  <MessageCircle size={20} />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {activePreviewTab === 'wechat' && (
+                            <div className="w-full max-w-[320px] mx-auto bg-white dark:bg-black rounded-[40px] border-[8px] border-[#ededed] dark:border-[#333] shadow-2xl overflow-hidden flex flex-col relative h-[640px]">
+                              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-[#ededed] dark:bg-[#333] rounded-b-3xl z-50"></div>
+                              <div className="flex items-center justify-between px-4 py-8 border-b border-black/5 dark:border-white/5 bg-[#ededed] dark:bg-[#1a1a1a] z-40">
+                                <span className="w-6"><X size={20} className="text-[#333] dark:text-[#A1A1A1]" /></span>
+                                <span className="text-sm font-bold dark:text-white truncate max-w-[150px]">{currentIdentity.name || '公众号'}</span>
+                                <span className="w-6 flex justify-end"><MoreHorizontal size={20} className="text-[#333] dark:text-[#A1A1A1]" /></span>
+                              </div>
+                              <div className="flex-1 overflow-y-auto custom-scrollbar bg-white dark:bg-black p-4 space-y-6">
+                                <h2 className="text-xl font-bold text-black dark:text-white leading-snug">
+                                  {editableResult.platformOverrides?.['wechat']?.title || editableResult.title}
+                                </h2>
+                                <div className="flex items-center justify-between text-[#A1A1A1] mb-6">
+                                  <span className="text-xs">{currentIdentity.name || '作者'}</span>
+                                  <span className="text-xs text-blue-500">关注公众号</span>
+                                </div>
+                                <div 
+                                  className="text-[15px] text-[#333] dark:text-[#E0E0E0] leading-loose prose prose-base dark:prose-invert max-w-none prose-p:my-5"
+                                  dangerouslySetInnerHTML={{ __html: marked.parse(editableResult.platformOverrides?.['wechat']?.content || editableResult.content) as string }}
+                                />
+                              </div>
+                              <div className="p-4 border-t border-black/5 dark:border-white/5 bg-[#F7F7F7] dark:bg-[#1a1a1a] flex items-center justify-between shrink-0 text-xs text-[#666] dark:text-[#A1A1A1]">
+                                <span>阅读 10万+</span>
+                                <div className="flex gap-4">
+                                  <div className="flex items-center gap-1"><Share size={16} />分享</div>
+                                  <div className="flex items-center gap-1"><Heart size={16} />赞</div>
+                                  <div className="flex items-center gap-1"><Star size={16} />在看</div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                           {/* Quality Analysis */}
                           <div className="p-6 rounded-[32px] bg-gradient-to-br from-[#FAFAFA] to-[#F0F0F0] dark:from-white/5 dark:to-white/[0.02] border border-white dark:border-white/10 shadow-xl space-y-6">
                             <div className="flex items-center justify-between">
