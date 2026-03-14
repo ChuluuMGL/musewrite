@@ -1,7 +1,11 @@
 #!/usr/bin/env node
-const http = require('http');
+
+// 加载环境变量
 const path = require('path');
 const fs = require('fs');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+
+const http = require('http');
 
 const ROOT = path.join(__dirname, '..');
 const DRAFTS_PATH = path.join(ROOT, 'drafts');

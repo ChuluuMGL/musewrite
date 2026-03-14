@@ -74,7 +74,7 @@ type Platform = {
 };
 
 type SidebarTab = 'selection' | 'history' | 'identity' | 'style' | 'settings';
-type MainView = 'editor' | 'refine-info' | 'identity-form' | 'style-form' | 'api-settings' | 'platform-settings' | 'data-settings' | 'appearance-settings' | 'about' | 'result' | 'setup';
+type MainView = 'editor' | 'refine-info' | 'identity-form' | 'style-form' | 'api-settings' | 'platform-settings' | 'data-settings' | 'appearance-settings' | 'about' | 'result' | 'setup' | 'account-settings';
 
 type GenerationResult = {
   title: string;
@@ -179,6 +179,7 @@ export default function App() {
   });
   const [selectedIdentityId, setSelectedIdentityId] = useState(() => localStorage.getItem('musewrite_selected_identity') || '1');
   const [selectedStyleId, setSelectedStyleId] = useState(() => localStorage.getItem('musewrite_selected_style') || 's1');
+  const [avatarUrl, setAvatarUrl] = useState(() => localStorage.getItem('musewrite_user_avatar') || 'https://api.dicebear.com/7.x/notionists/svg?seed=Felix');
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(() => {
     const saved = localStorage.getItem('musewrite_selected_platforms');
     return saved ? JSON.parse(saved) : ['p1', 'p2'];
@@ -505,11 +506,10 @@ export default function App() {
     setIsRefining(true);
     
     try {
-      const apiKey = userApiKey || (process.env as any).GEMINI_API_KEY;
-      if (!apiKey) throw new Error("API_KEY_MISSING");
+      const apiKey = userApiKey || (process.env as any).GEMINI_API_KEY || '';
 
-      const ai = new GoogleGenAI({ apiKey });
-      const model = selectedModel;
+      const parts = selectedModel.split('-');
+      const providerStr = parts[0] === 'gemini' ? 'gemini' : parts[0] === 'ollama' ? 'ollama' : parts[0] === 'deepseek' ? 'deepseek' : 'openai';
       
       const prompt = `
         你是一个专业的写作助手。请根据以下指令修改选中的文字。
@@ -520,12 +520,13 @@ export default function App() {
         请只返回修改后的文字，不要包含任何解释。
       `;
 
-      const response = await ai.models.generateContent({
-        model,
-        contents: prompt
-      });
+      const response = await apiService.testLlmConnection(providerStr, selectedModel, apiKey, 'adapt', prompt);
 
-      const refinedText = response.text;
+      if (!response || !response.success || !response.rawResponse) {
+        throw new Error(response?.error || '生成失败');
+      }
+
+      const refinedText = response.rawResponse;
       const newMaterial = material.slice(0, selection.start) + refinedText + material.slice(selection.end);
       setMaterial(newMaterial);
       setSelection({ start: 0, end: 0, text: '' });
@@ -550,11 +551,10 @@ export default function App() {
     setMainView('refine-info');
     
     try {
-      const apiKey = userApiKey || (process.env as any).GEMINI_API_KEY;
-      if (!apiKey) throw new Error("API_KEY_MISSING");
+      const apiKey = userApiKey || (process.env as any).GEMINI_API_KEY || '';
 
-      const ai = new GoogleGenAI({ apiKey });
-      const model = "gemini-2.0-flash";
+      const parts = selectedModel.split('-');
+      const providerStr = parts[0] === 'gemini' ? 'gemini' : parts[0] === 'ollama' ? 'ollama' : parts[0] === 'deepseek' ? 'deepseek' : 'openai';
       
       const prompt = `
         你是一个专业的信息提取专家。请从以下素材中提取核心信息点、关键事实和重要数据。
@@ -564,12 +564,13 @@ export default function App() {
         请以简洁的列表形式返回，不要包含任何修饰性语言。
       `;
 
-      const response = await ai.models.generateContent({
-        model: selectedModel,
-        contents: prompt
-      });
+      const response = await apiService.testLlmConnection(providerStr, selectedModel, apiKey, 'adapt', prompt);
 
-      setExtractedInfo(response.text);
+      if (!response || !response.success || !response.rawResponse) {
+        throw new Error(response?.error || '提取失败');
+      }
+
+      setExtractedInfo(response.rawResponse);
     } catch (error: any) {
       console.error("Extraction failed:", error);
       if (error.message === 'API_KEY_MISSING') {
@@ -1047,6 +1048,25 @@ export default function App() {
     </div>
   );
 
+  const handleUploadAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setAvatarUrl(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleGenerateNotionAvatar = () => {
+    const randomSeed = Math.random().toString(36).substring(7);
+    const newAvatar = `https://api.dicebear.com/7.x/notionists/svg?seed=${randomSeed}`;
+    setAvatarUrl(newAvatar);
+  };
+
   // 2. Main Integrated Layout
   const renderMainLayout = () => (
     <div className="flex h-screen bg-[var(--background)] overflow-hidden transition-colors duration-300">
@@ -1057,40 +1077,47 @@ export default function App() {
             handleTabClick('selection');
             setMainView('editor');
           }}
-          className={`w-8 h-8 rounded-lg ${sidebarTab === 'selection' && mainView === 'editor' ? 'bg-brand text-white dark:text-black shadow-lg shadow-black/10' : 'bg-surface-low text-[#A1A1A1] border border-border-subtle hover:bg-brand/10 hover:text-brand hover:border-brand/20 dark:hover:bg-brand dark:hover:text-black'} flex items-center justify-center cursor-pointer transition-all duration-300`}
-          title="返回创作"
+          className={`group relative w-8 h-8 rounded-lg ${sidebarTab === 'selection' && mainView === 'editor' ? 'bg-brand text-white dark:text-black shadow-lg shadow-black/10' : 'bg-surface-low text-[#A1A1A1] border border-border-subtle hover:bg-brand/10 hover:text-brand hover:border-brand/20 dark:hover:bg-brand dark:hover:text-black'} flex items-center justify-center cursor-pointer transition-all duration-300`}
         >
           <PenTool size={16} strokeWidth={2.5} />
+          <div className="absolute left-[calc(100%+12px)] px-2.5 py-1 text-xs font-bold bg-black dark:bg-white text-white dark:text-black rounded-lg opacity-0 translate-x-1 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50 shadow-xl whitespace-nowrap">
+            创作页面
+          </div>
         </div>
         <nav className="flex flex-col gap-1">
           <button 
             onClick={() => handleTabClick('history')}
-            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'history' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
-            title="历史记录"
+            className={`group relative w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'history' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
           >
             <History size={18} />
+            <div className="absolute left-[calc(100%+12px)] px-2.5 py-1 text-xs font-bold bg-black dark:bg-white text-white dark:text-black rounded-lg opacity-0 translate-x-1 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50 shadow-xl whitespace-nowrap">
+              历史记录
+            </div>
           </button>
           <button 
             onClick={() => handleTabClick('identity')}
-            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'identity' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
-            title="人设管理"
+            className={`group relative w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'identity' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
           >
             <UserCircle size={18} />
+            <div className="absolute left-[calc(100%+12px)] px-2.5 py-1 text-xs font-bold bg-black dark:bg-white text-white dark:text-black rounded-lg opacity-0 translate-x-1 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50 shadow-xl whitespace-nowrap">
+              人设管理
+            </div>
           </button>
           <button 
             onClick={() => handleTabClick('style')}
-            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'style' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
-            title="风格管理"
+            className={`group relative w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'style' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
           >
             <Palette size={18} />
+            <div className="absolute left-[calc(100%+12px)] px-2.5 py-1 text-xs font-bold bg-black dark:bg-white text-white dark:text-black rounded-lg opacity-0 translate-x-1 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50 shadow-xl whitespace-nowrap">
+              风格管理
+            </div>
           </button>
 
         </nav>
         <div className="mt-auto flex flex-col gap-3">
           <button 
             onClick={toggleTheme}
-            className="w-8 h-8 flex items-center justify-center rounded-md transition-all text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5 relative group/theme"
-            title={isDarkMode ? "切换到白天模式" : "切换到夜晚模式"}
+            className="group relative group/theme w-8 h-8 flex items-center justify-center rounded-md transition-all text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5"
           >
             {isDarkMode ? (
               <>
@@ -1103,19 +1130,30 @@ export default function App() {
                 <MoonFull size={18} className="absolute opacity-0 scale-50 rotate-90 transition-all duration-300 group-hover/theme:opacity-100 group-hover/theme:scale-100 group-hover/theme:rotate-0 text-yellow-500" />
               </>
             )}
+            <div className="absolute left-[calc(100%+12px)] px-2.5 py-1 text-xs font-bold bg-black dark:bg-white text-white dark:text-black rounded-lg opacity-0 translate-x-1 pointer-events-none group-hover/theme:opacity-100 group-hover/theme:translate-x-0 transition-all duration-200 z-50 shadow-xl whitespace-nowrap">
+              {isDarkMode ? '白天模式' : '夜晚模式'}
+            </div>
           </button>
           <button 
             onClick={() => handleTabClick('settings')}
-            className={`w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'settings' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
-            title="设置"
+            className={`group relative w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === 'settings' && isSidebarOpen ? 'bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10' : 'text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5'}`}
           >
             <Settings size={18} />
+            <div className="absolute left-[calc(100%+12px)] px-2.5 py-1 text-xs font-bold bg-black dark:bg-white text-white dark:text-black rounded-lg opacity-0 translate-x-1 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50 shadow-xl whitespace-nowrap">
+              设置
+            </div>
           </button>
           <div 
-            onClick={() => handleTabClick('settings')}
-            className="w-7 h-7 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden border border-black/5 cursor-pointer hover:ring-2 hover:ring-black/10 transition-all"
+            onClick={() => {
+              handleTabClick('settings');
+              setMainView('account-settings');
+            }}
+            className="group relative w-7 h-7 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden border border-black/5 cursor-pointer hover:ring-2 hover:ring-black/10 transition-all"
           >
-            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" alt="User" />
+            <img src={avatarUrl} alt="User" className="w-full h-full object-cover" />
+            <div className="absolute left-[calc(100%+12px)] top-1/2 -translate-y-1/2 px-2.5 py-1 text-xs font-bold bg-black dark:bg-white text-white dark:text-black rounded-lg opacity-0 translate-x-1 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50 shadow-xl whitespace-nowrap">
+              个人设置
+            </div>
           </div>
         </div>
       </aside>
@@ -1332,6 +1370,7 @@ export default function App() {
               {sidebarTab === 'settings' && (
                 <section className="space-y-6">
                   <nav className="space-y-1">
+                    <SettingsNavItem label="个人设置" active={mainView === 'account-settings'} onClick={() => setMainView('account-settings')} icon={<UserCircle size={16} />} />
                     <SettingsNavItem label="API 设置" active={mainView === 'api-settings'} onClick={() => setMainView('api-settings')} icon={<Zap size={16} />} />
                     <SettingsNavItem label="平台管理" active={mainView === 'platform-settings'} onClick={() => setMainView('platform-settings')} icon={<Globe size={16} />} />
                     <SettingsNavItem label="数据存储" active={mainView === 'data-settings'} onClick={() => setMainView('data-settings')} icon={<Download size={16} />} />
@@ -1372,15 +1411,19 @@ export default function App() {
 
         <header className="h-14 border-b border-border-subtle px-6 flex items-center justify-between shrink-0 bg-[var(--background)]/80 backdrop-blur-md sticky top-0 z-20 transition-colors duration-300">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-[#666]">MuseWrite</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-[#666]">
+              {['account-settings', 'api-settings', 'platform-settings', 'data-settings', 'about'].includes(mainView) ? '系统设置' : 'MuseWrite'}
+            </span>
             <ChevronRight size={10} className="text-[#D1D1D1]" />
             <span className="text-[10px] font-medium text-[#666] dark:text-[#A1A1A1]">
               {mainView === 'editor' && '新创作'}
               {mainView === 'identity-form' && (editingIdentity ? '编辑人设' : '新建人设')}
               {mainView === 'style-form' && (editingStyle ? '编辑风格' : '新建风格')}
+              {mainView === 'account-settings' && '个人设置'}
               {mainView === 'api-settings' && 'API 设置'}
               {mainView === 'platform-settings' && '平台管理'}
               {mainView === 'data-settings' && '数据存储'}
+              {mainView === 'about' && '关于'}
               {mainView === 'result' && '生成结果'}
             </span>
           </div>
@@ -1657,6 +1700,65 @@ export default function App() {
                 </div>
               </motion.div>
             )}
+            {mainView === 'account-settings' && (
+              <motion.div 
+                key="account-settings" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                className="h-full overflow-y-auto custom-scrollbar p-12"
+              >
+                <div className="max-w-[640px] mx-auto space-y-12">
+                  <div className="space-y-6">
+                    <div className="p-8 bg-surface-low rounded-3xl space-y-8">
+                      <div className="flex flex-col items-center space-y-5">
+                        <div className="w-24 h-24 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden border-4 border-white dark:border-[#1A1A1A] shadow-xl">
+                          <img src={avatarUrl} alt="User" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex items-center justify-center gap-3">
+                          <label className="px-4 py-2 bg-black/5 dark:bg-white/10 text-black dark:text-white rounded-full text-xs font-bold hover:bg-black/10 dark:hover:bg-white/20 transition-all cursor-pointer flex items-center gap-1.5">
+                            <Upload size={14} /> 本地上传
+                            <input type="file" accept="image/*" onChange={handleUploadAvatar} className="hidden" />
+                          </label>
+                          <button 
+                            onClick={handleGenerateNotionAvatar}
+                            className="px-4 py-2 bg-brand text-black dark:text-black rounded-full text-xs font-bold hover:opacity-90 transition-opacity flex items-center gap-1.5 shadow-md shadow-brand/20"
+                            title="一键随机生成 Notion 极简线条风格头像"
+                          >
+                            <Sparkles size={14} /> AI 捏脸
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-white">用户名</label>
+                          <input 
+                            type="text" 
+                            defaultValue="创作者"
+                            className="w-full px-4 py-3 bg-white dark:bg-black/20 border border-border-subtle rounded-xl text-sm outline-none focus:border-brand dark:text-white transition-colors"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1] dark:text-white">个人简介</label>
+                          <textarea 
+                            defaultValue="在这里写下你的简介..."
+                            className="w-full h-24 px-4 py-3 bg-white dark:bg-black/20 border border-border-subtle rounded-xl text-sm outline-none focus:border-brand dark:text-white transition-colors resize-none"
+                          />
+                        </div>
+                      </div>
+                      
+                      <button 
+                        onClick={() => {
+                          setToastMessage({ show: true, text: '个人资料已更新' });
+                          setTimeout(() => setToastMessage({ show: false, text: '' }), 2500);
+                        }}
+                        className="w-full py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl text-sm font-bold hover:opacity-90 transition-all"
+                      >
+                        保存个人资料
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
             {mainView === 'api-settings' && (
               <motion.div 
@@ -1664,12 +1766,7 @@ export default function App() {
                 className="h-full overflow-y-auto custom-scrollbar p-12"
               >
                 <div className={`max-w-[640px] mx-auto space-y-12 transition-all duration-500 ${isModelDropdownOpen ? 'pb-[500px]' : 'pb-12'}`}>
-                  {/* Breadcrumbs Title */}
-                  <div className="flex items-center gap-2 mb-8">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">MuseWrite</span>
-                    <ChevronRight size={10} className="text-[#A1A1A1]" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-black dark:text-white">API 设置</span>
-                  </div>
+
                   <div className="p-8 bg-surface-low rounded-3xl space-y-6">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
@@ -1848,12 +1945,7 @@ export default function App() {
                 className="h-full overflow-y-auto custom-scrollbar p-12"
               >
                 <div className="max-w-[800px] mx-auto space-y-12">
-                  {/* Breadcrumbs Title */}
-                  <div className="flex items-center gap-2 mb-8">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">MuseWrite</span>
-                    <ChevronRight size={10} className="text-[#A1A1A1]" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-black dark:text-white">平台管理</span>
-                  </div>
+
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {platformConfigs.map(p => (
@@ -1932,12 +2024,7 @@ export default function App() {
                 className="h-full overflow-y-auto custom-scrollbar p-12"
               >
                 <div className="max-w-[640px] mx-auto space-y-12">
-                  {/* Breadcrumbs Title */}
-                  <div className="flex items-center gap-2 mb-8">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">MuseWrite</span>
-                    <ChevronRight size={10} className="text-[#A1A1A1]" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-black dark:text-white">数据存储</span>
-                  </div>
+
                   <div className="space-y-6">
                     <div className="p-8 bg-surface-low rounded-3xl space-y-6">
                       <div className="space-y-6">
@@ -1945,7 +2032,7 @@ export default function App() {
                         <p className="text-[10px] text-[#666] dark:text-[#A1A1A1]">导出所有配置、人设、风格和历史记录到本地 JSON 文件。</p>
                         <button 
                           onClick={handleExportData}
-                          className="mt-4 px-6 py-3 bg-brand text-black dark:text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center gap-2"
+                          className="mt-4 px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold text-sm hover:opacity-90 transition-all flex items-center gap-2"
                         >
                           <Download size={16} /> 导出备份文件
                         </button>
@@ -2003,12 +2090,7 @@ export default function App() {
                 className="h-full overflow-y-auto custom-scrollbar p-12"
               >
                 <div className="max-w-[640px] mx-auto space-y-12">
-                  {/* Breadcrumbs Title */}
-                  <div className="flex items-center gap-2 mb-8">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">MuseWrite</span>
-                    <ChevronRight size={10} className="text-[#A1A1A1]" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-black dark:text-white">关于</span>
-                  </div>
+
                   <div className="space-y-8">
                     <div className="flex flex-col items-center text-center space-y-4 py-12">
                       <div className="w-20 h-20 bg-black dark:bg-white rounded-[24px] flex items-center justify-center text-white dark:text-black shadow-2xl">
