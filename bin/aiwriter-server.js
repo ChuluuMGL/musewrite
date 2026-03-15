@@ -24,12 +24,12 @@ const DraftManager = require(path.join(ROOT, 'lib/DraftManager'));
 const AgentCoordinator = require(path.join(ROOT, 'lib/AgentCoordinator'));
 const PreferenceLearner = require(path.join(ROOT, 'lib/PreferenceLearner'));
 const PlatformPublisher = require(path.join(ROOT, 'lib/PlatformPublisher'));
-const {getConfig} = require(path.join(ROOT, 'lib/ConfigManager'));
+const {_getConfig} = require(path.join(ROOT, 'lib/ConfigManager'));
 
 // 新增：安全、缓存、错误处理
-const {AppError, ErrorCodes, Validator, asyncHandler} = require(path.join(ROOT, 'lib/AppError'));
+const {_AppError, _ErrorCodes, _Validator, _asyncHandler} = require(path.join(ROOT, 'lib/AppError'));
 const {getCache, createNamespacedCache, TTL} = require(path.join(ROOT, 'lib/CacheManager'));
-const {crypto, validator: inputValidator, sanitizer, setSecurityHeaders} = require(
+const {_crypto, validator: _inputValidator, _sanitizer, _setSecurityHeaders} = require(
   path.join(ROOT, 'lib/SecurityManager')
 );
 
@@ -51,7 +51,7 @@ const auth = new AuthMiddleware(path.join(ROOT, 'config', 'api-keys.json'));
 const rateLimiter = new RateLimiter({requestsPerMinute: 60, requestsPerHour: 1000});
 const requestId = new RequestIdMiddleware(300000);
 const logger = new LoggerMiddleware(path.join(ROOT, 'logs'));
-const retry = new RetryMiddleware({maxRetries: 3, baseDelay: 1000});
+const _retry = new RetryMiddleware({maxRetries: 3, baseDelay: 1000});
 const publishTracker = new PublishTracker();
 const draftManager = new DraftManager(DRAFTS_PATH);
 
@@ -59,14 +59,14 @@ const coordinator = new AgentCoordinator(path.join(ROOT, 'config'));
 
 // 新增：偏好学习器和平台发布器
 const preferenceLearner = new PreferenceLearner(path.join(ROOT, 'data', 'preferences.json'));
-const platformPublisher = new PlatformPublisher({
+const _platformPublisher = new PlatformPublisher({
   configPath: path.join(ROOT, 'config', 'publishers.json')
 });
 
 // 新增：缓存层
-const configCache = createNamespacedCache('config', TTL.MEDIUM);
-const draftCache = createNamespacedCache('drafts', TTL.SHORT);
-const preferenceCache = createNamespacedCache('preferences', TTL.LONG);
+const _configCache = createNamespacedCache('config', TTL.MEDIUM);
+const _draftCache = createNamespacedCache('drafts', TTL.SHORT);
+const _preferenceCache = createNamespacedCache('preferences', TTL.LONG);
 
 // 加载模块化路由
 const routeHandlers = loadRoutes(ROOT);
@@ -89,7 +89,7 @@ function readBody(req) {
     req.on('end', () => {
       try {
         resolve(body ? JSON.parse(body) : {});
-      } catch (e) {
+      } catch (_e) {
         reject(new Error('Invalid JSON'));
       }
     });
@@ -176,9 +176,9 @@ async function handleGenerate(body, taskId = null) {
     checklist = feedbackManager.getChecklist(platform || 'xiaohongshu', info || 'stone');
 
   // 获取偏好提示词（如果启用）
-  let preferencePrompt = '';
+  let _preferencePrompt = '';
   if (learnPreferences !== false) {
-    preferencePrompt = preferenceLearner.formatForPrompt();
+    _preferencePrompt = preferenceLearner.formatForPrompt();
   }
 
   // Use the shared coordinator instance
@@ -229,7 +229,7 @@ async function handleGenerate(body, taskId = null) {
 }
 
 // 辅助函数：从编辑中学习偏好
-function handleDraftEdit(draftId, originalContent, editedContent, context) {
+function _handleDraftEdit(_draftId, originalContent, editedContent, context) {
   preferenceLearner.learn(originalContent, editedContent, context || {});
   return {success: true, message: 'Preferences learned'};
 }
@@ -307,8 +307,8 @@ const server = http.createServer(async (req, res) => {
       // 检查草稿目录
       try {
         fs.accessSync(DRAFTS_PATH, fs.constants.R_OK | fs.constants.W_OK);
-      } catch (e) {
-        health.checks.drafts = `error: ${e.message}`;
+      } catch (_e) {
+        health.checks.drafts = `error: ${_e.message}`;
         health.status = 'degraded';
       }
 
@@ -316,8 +316,8 @@ const server = http.createServer(async (req, res) => {
       try {
         const taskCount = Object.keys(taskQueue.tasks || {}).length;
         health.checks.tasks = `ok (${taskCount} tasks)`;
-      } catch (e) {
-        health.checks.tasks = `error: ${e.message}`;
+      } catch (_e) {
+        health.checks.tasks = `error: ${_e.message}`;
         health.status = 'degraded';
       }
 
@@ -377,9 +377,9 @@ const server = http.createServer(async (req, res) => {
         if (task.status === 'completed') task.result = taskQueue.getTaskResult(taskId);
         res.writeHead(200);
         res.end(JSON.stringify({success: true, task}));
-      } catch (e) {
+      } catch (_e) {
         res.writeHead(404);
-        res.end(JSON.stringify({success: false, error: e.message}));
+        res.end(JSON.stringify({success: false, error: _e.message}));
       }
     } else if (pathname === '/api/v1/feedback' && req.method === 'POST') {
       const body = await readBody(req);
@@ -672,7 +672,7 @@ server.listen(port, () => {
   }
 
   // 打印缓存统计
-  const cache = getCache();
+  const _cache = getCache();
   console.log('📦 缓存系统已初始化');
 });
 
@@ -742,7 +742,7 @@ process.on('uncaughtException', (error) => {
   gracefulShutdown('uncaughtException');
 });
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason, _promise) => {
   console.error('❌ 未处理的 Promise 拒绝:', reason);
   logger.logError(new Error(String(reason)), null, {type: 'unhandledRejection'});
 });

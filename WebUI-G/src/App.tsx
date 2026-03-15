@@ -69,6 +69,7 @@ import {
   Heart,
   Star,
   MoreHorizontal,
+  ArrowRight,
 } from "lucide-react"
 
 // --- Types ---
@@ -1602,18 +1603,6 @@ export default function App() {
               风格管理
             </div>
           </button>
-          <button
-            onClick={() => {
-              handleTabClick("twin")
-              setMainView("creator-twin")
-            }}
-            className={`group relative w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === "twin" && isSidebarOpen ? "bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10" : "text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5"}`}
-          >
-            <Cpu size={18} />
-            <div className="absolute left-[calc(100%+12px)] px-2.5 py-1 text-xs font-bold bg-black dark:bg-white text-white dark:text-black rounded-lg opacity-0 translate-x-1 pointer-events-none group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50 shadow-xl whitespace-nowrap">
-              风格学习
-            </div>
-          </button>
         </nav>
         <div className="md:mt-auto hidden md:flex flex-col gap-3">
           <button
@@ -2700,154 +2689,6 @@ export default function App() {
               </motion.div>
             )}
 
-            {/* Creator Twin - 风格学习 */}
-            {mainView === "creator-twin" && (
-              <motion.div
-                key="creator-twin"
-                initial={{opacity: 0, x: 20}}
-                animate={{opacity: 1, x: 0}}
-                exit={{opacity: 0, x: -20}}
-                className="h-full overflow-y-auto custom-scrollbar p-12"
-              >
-                <div className="max-w-[800px] mx-auto space-y-8">
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={() => setMainView("editor")}
-                      className="p-2 hover:bg-[#F7F7F7] rounded-full dark:text-white"
-                    >
-                      <ChevronLeft size={20} />
-                    </button>
-                    <div>
-                      <h2 className="text-2xl font-bold tracking-tight dark:text-white">
-                        风格学习
-                      </h2>
-                      <p className="text-sm text-[#A1A1A1] mt-1">
-                        上传您的历史文章，AI将学习您的写作风格
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* 文章输入区 */}
-                  <div className="bg-surface-low rounded-3xl p-8 space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-bold dark:text-white">历史文章</h3>
-                      <span className="text-xs text-[#A1A1A1]">支持粘贴多篇文章，用 --- 分隔</span>
-                    </div>
-                    <textarea
-                      value={twinArticles}
-                      onChange={(e) => setTwinArticles(e.target.value)}
-                      placeholder="在此粘贴您的历史文章内容...&#10;&#10;例如：&#10;这是我之前写的一篇文章...&#10;---&#10;这是另一篇文章..."
-                      className="w-full h-64 px-4 py-3 bg-white dark:bg-black/20 border border-border-subtle rounded-xl text-sm outline-none focus:border-brand dark:text-white transition-colors resize-none"
-                    />
-                    <div className="flex items-center gap-4">
-                      <button
-                        onClick={handleAnalyzeStyle}
-                        disabled={!twinArticles.trim() || twinAnalyzing}
-                        className="px-6 py-3 bg-brand text-black rounded-xl text-sm font-bold hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {twinAnalyzing ? (
-                          <>
-                            <Loader2 size={16} className="animate-spin" /> 分析中...
-                          </>
-                        ) : (
-                          <>
-                            <Cpu size={16} /> 开始分析风格
-                          </>
-                        )}
-                      </button>
-                      {twinConfidence > 0 && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <CheckCircle2 size={16} className="text-green-500" />
-                          <span className="dark:text-white">置信度: {twinConfidence}%</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 分析结果 */}
-                  {twinFingerprint && (
-                    <div className="bg-surface-low rounded-3xl p-8 space-y-6">
-                      <h3 className="text-sm font-bold dark:text-white">风格画像</h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-white dark:bg-black/20 rounded-xl p-4 space-y-2">
-                          <div className="text-xs text-[#A1A1A1]">句子风格</div>
-                          <div className="text-sm font-medium dark:text-white">
-                            {twinFingerprint.language?.sentenceLength || "中等"}
-                          </div>
-                        </div>
-                        <div className="bg-white dark:bg-black/20 rounded-xl p-4 space-y-2">
-                          <div className="text-xs text-[#A1A1A1]">Emoji 密度</div>
-                          <div className="text-sm font-medium dark:text-white">
-                            {twinFingerprint.language?.emojiDensity || "低"}
-                          </div>
-                        </div>
-                        <div className="bg-white dark:bg-black/20 rounded-xl p-4 space-y-2">
-                          <div className="text-xs text-[#A1A1A1]">情感基调</div>
-                          <div className="text-sm font-medium dark:text-white">
-                            {twinFingerprint.emotion || "中性"}
-                          </div>
-                        </div>
-                        <div className="bg-white dark:bg-black/20 rounded-xl p-4 space-y-2">
-                          <div className="text-xs text-[#A1A1A1]">已分析文章</div>
-                          <div className="text-sm font-medium dark:text-white">
-                            {twinFingerprint.articlesAnalyzed || 0} 篇
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 用学习到的风格生成 */}
-                  {twinConfidence > 0 && (
-                    <div className="bg-surface-low rounded-3xl p-8 space-y-6">
-                      <h3 className="text-sm font-bold dark:text-white">用我的风格生成</h3>
-                      <textarea
-                        value={twinPrompt}
-                        onChange={(e) => setTwinPrompt(e.target.value)}
-                        placeholder="输入您想写的内容主题..."
-                        className="w-full h-24 px-4 py-3 bg-white dark:bg-black/20 border border-border-subtle rounded-xl text-sm outline-none focus:border-brand dark:text-white transition-colors resize-none"
-                      />
-                      <div className="flex items-center gap-4">
-                        <button
-                          onClick={handleGenerateWithStyle}
-                          disabled={!twinPrompt.trim() || twinGenerating}
-                          className="px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl text-sm font-bold hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {twinGenerating ? (
-                            <>
-                              <Loader2 size={16} className="animate-spin" /> 生成中...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles size={16} /> 生成内容
-                            </>
-                          )}
-                        </button>
-                      </div>
-
-                      {/* 生成结果 */}
-                      {twinGeneratedContent && (
-                        <div className="mt-6 bg-white dark:bg-black/20 rounded-xl p-6 space-y-4">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-bold dark:text-white">生成结果</h4>
-                            <button
-                              onClick={() => navigator.clipboard.writeText(twinGeneratedContent)}
-                              className="text-xs text-[#A1A1A1] hover:text-brand flex items-center gap-1"
-                            >
-                              <Copy size={12} /> 复制
-                            </button>
-                          </div>
-                          <div className="text-sm dark:text-white whitespace-pre-wrap">
-                            {twinGeneratedContent}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
             {mainView === "account-settings" && (
               <motion.div
                 key="account-settings"
@@ -3545,6 +3386,179 @@ export default function App() {
                         </label>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Creator Twin - 风格学习 */}
+            {mainView === "creator-twin" && (
+              <motion.div
+                key="creator-twin"
+                initial={{opacity: 0, x: 20}}
+                animate={{opacity: 1, x: 0}}
+                exit={{opacity: 0, x: -20}}
+                className="h-full overflow-y-auto custom-scrollbar p-12"
+              >
+                <div className="max-w-[800px] mx-auto space-y-12">
+                  <div className="space-y-2 border-b border-border-subtle pb-6">
+                    <h2 className="text-3xl tracking-tight font-extrabold text-black dark:text-white">
+                      风格学习
+                    </h2>
+                    <p className="text-sm font-medium text-[#666] dark:text-[#A1A1A1] mt-2">
+                      上传您的历史文章，让 AI 学习并模仿您的专属写作风格和语感。
+                    </p>
+                  </div>
+
+                  <div className="space-y-12">
+                    <div className="bg-surface-low rounded-[32px] p-8 space-y-6 border border-border-subtle shadow-xl">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-bold dark:text-white">历史文章输入区</h3>
+                        <span className="text-xs text-[#A1A1A1] bg-black/5 dark:bg-white/10 px-3 py-1 rounded-full font-mono">
+                          支持粘贴多篇内容，请用 --- 作为分隔符
+                        </span>
+                      </div>
+                      <textarea
+                        value={twinArticles}
+                        onChange={(e) => setTwinArticles(e.target.value)}
+                        placeholder="在此粘贴您的历史文章内容...&#10;&#10;例如：&#10;这是我之前写的一篇文章...&#10;---&#10;这是另一篇文章..."
+                        className="w-full h-[400px] px-6 py-5 bg-[var(--background)] border border-border-subtle rounded-2xl outline-none focus:border-brand/40 dark:text-white transition-all resize-none shadow-sm font-mono text-sm"
+                        style={{lineHeight: "1.8"}}
+                      />
+                      <div className="flex items-center gap-4">
+                        <button
+                          onClick={handleAnalyzeStyle}
+                          disabled={!twinArticles.trim() || twinAnalyzing}
+                          className={`px-8 py-4 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${twinAnalyzing ? "bg-brand/20 text-brand cursor-not-allowed" : "bg-brand text-white hover:scale-105 active:scale-95 shadow-lg shadow-brand/20"}`}
+                        >
+                          {twinAnalyzing ? (
+                            <>
+                              <Loader2 size={16} className="animate-spin" /> 正在分析...
+                            </>
+                          ) : (
+                            <>
+                              <Cpu size={16} /> 开始分析风格
+                            </>
+                          )}
+                        </button>
+                        {twinConfidence > 0 && (
+                          <div className="flex items-center gap-2 px-4 py-3 bg-green-500/10 text-green-600 rounded-xl font-bold">
+                            <CheckCircle2 size={16} />
+                            <span>风格置信度: {twinConfidence}%</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 分析结果画像 */}
+                    {twinFingerprint && (
+                      <motion.div
+                        initial={{opacity: 0, y: 20}}
+                        animate={{opacity: 1, y: 0}}
+                        className="bg-surface-mid rounded-[32px] p-8 border border-border-subtle space-y-6 shadow-lg"
+                      >
+                        <h3 className="text-sm font-bold dark:text-white flex items-center gap-2">
+                          <Layers size={16} className="text-brand" /> 您的风格画像已生成
+                        </h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="bg-[var(--background)] rounded-2xl p-5 space-y-3 border border-border-subtle hover:border-brand/50 transition-colors">
+                            <div className="text-xs text-[#A1A1A1] font-bold">句子长度特征</div>
+                            <div className="text-base font-black dark:text-white">
+                              {twinFingerprint.language?.sentenceLength || "常规中等"}
+                            </div>
+                          </div>
+                          <div className="bg-[var(--background)] rounded-2xl p-5 space-y-3 border border-border-subtle hover:border-brand/50 transition-colors">
+                            <div className="text-xs text-[#A1A1A1] font-bold">Emoji 使用密度</div>
+                            <div className="text-base font-black dark:text-white">
+                              {twinFingerprint.language?.emojiDensity || "极简内敛"}
+                            </div>
+                          </div>
+                          <div className="bg-[var(--background)] rounded-2xl p-5 space-y-3 border border-border-subtle hover:border-brand/50 transition-colors">
+                            <div className="text-xs text-[#A1A1A1] font-bold">整体情感基调</div>
+                            <div className="text-base font-black dark:text-white">
+                              {twinFingerprint.emotion || "中性客观"}
+                            </div>
+                          </div>
+                          <div className="bg-[var(--background)] rounded-2xl p-5 space-y-3 border border-border-subtle hover:border-brand/50 transition-colors">
+                            <div className="text-xs text-[#A1A1A1] font-bold">累计分析文章</div>
+                            <div className="text-base font-black text-brand">
+                              {twinFingerprint.articlesAnalyzed || 0} 篇
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {/* 用学习到的风格生成 */}
+                    {twinConfidence > 0 && (
+                      <motion.div
+                        initial={{opacity: 0, y: 20}}
+                        animate={{opacity: 1, y: 0}}
+                        className="bg-brand/5 rounded-[32px] p-8 border border-brand/20 space-y-6"
+                      >
+                        <div className="space-y-2">
+                          <h3 className="text-sm font-bold dark:text-white">体验风格克隆生成</h3>
+                          <p className="text-xs text-[#666] dark:text-[#A1A1A1]">
+                            随便输入一段话题，看看它能否写出带有您“味道”的文字。
+                          </p>
+                        </div>
+                        <textarea
+                          value={twinPrompt}
+                          onChange={(e) => setTwinPrompt(e.target.value)}
+                          placeholder="请输入您想创作的主题（例如：推荐一家新开的咖啡馆...）"
+                          className="w-full h-32 px-5 py-4 bg-white dark:bg-black/40 border border-brand/30 rounded-2xl text-sm outline-none focus:border-brand dark:text-white transition-colors resize-none placeholder-brand/30"
+                        />
+                        <div className="flex items-center gap-4">
+                          <button
+                            onClick={handleGenerateWithStyle}
+                            disabled={!twinPrompt.trim() || twinGenerating}
+                            className="px-8 py-4 bg-black dark:bg-white text-white dark:text-black rounded-xl text-sm font-bold hover:opacity-90 transition-opacity flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl hover:shadow-black/20 dark:hover:shadow-white/20"
+                          >
+                            {twinGenerating ? (
+                              <>
+                                <Loader2 size={16} className="animate-spin" /> 努力酝酿中...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles size={16} /> 尝试生成一段
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* 生成结果 */}
+                        {twinGeneratedContent && (
+                          <motion.div
+                            initial={{opacity: 0}}
+                            animate={{opacity: 1}}
+                            className="mt-8 bg-white dark:bg-[#1A1A1A] rounded-2xl p-6 md:p-8 space-y-6 border border-border-subtle shadow-sm relative overflow-hidden group"
+                          >
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center text-green-500">
+                                  <PenTool size={14} />
+                                </div>
+                                <h4 className="text-sm font-bold dark:text-white">克隆风格生成结果预览</h4>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setMaterial(twinGeneratedContent)
+                                  setMainView("editor")
+                                  setToastMessage({show: true, text: "已应用到主创作页"})
+                                }}
+                                className="self-start md:self-auto px-4 py-2 bg-brand/10 text-brand text-xs font-bold rounded-lg hover:bg-brand hover:text-white transition-all flex items-center gap-1"
+                              >
+                                应用到创作页 <ArrowRight size={12} />
+                              </button>
+                            </div>
+                            <p className="text-sm text-black dark:text-[#e0e0e0] leading-[1.8] whitespace-pre-wrap font-mono">
+                              {twinGeneratedContent}
+                            </p>
+                            <div className="absolute inset-0 border-2 border-transparent group-hover:border-brand/20 rounded-2xl pointer-events-none transition-colors" />
+                          </motion.div>
+                        )}
+                      </motion.div>
+                    )}
                   </div>
                 </div>
               </motion.div>
