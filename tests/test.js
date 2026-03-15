@@ -18,13 +18,13 @@ try {
   const CardLoader = require('./lib/CardLoader');
   const loader = new CardLoader(CONFIG_PATH);
 
-  const stoneInfo = loader.loadInfoCard('stone');
+  const _stoneInfo = loader.loadInfoCard('stone');
   console.log('✅ stone-info.md 加载成功');
 
-  const stoneStyle = loader.loadStyleCard('stone');
+  const _stoneStyle = loader.loadStyleCard('stone');
   console.log('✅ stone-style.md 加载成功');
 
-  const xiaohongshu = loader.loadPlatformCard('xiaohongshu');
+  const _xiaohongshu = loader.loadPlatformCard('xiaohongshu');
   console.log('✅ xiaohongshu.md 加载成功');
 
   const infoCards = loader.listCards('info-cards');

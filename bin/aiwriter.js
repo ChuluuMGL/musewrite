@@ -39,17 +39,14 @@ async function main() {
     await runReview(args.slice(1));
     break;
   case 'init':
-    await runInit(args.slice(1));
-    break;
-  case 'config':
-  case 'interview':
+  case 'interview': {
     // 委托给子命令
     const {spawn} = require('child_process');
-    const subCmd = args[0] === 'config' ? 'aiwriter-config.js' : 'aiwriter-interview.js';
-    const subArgs = args[0] === 'config' ? args.slice(1) : args.slice(1);
-    const child = spawn(path.join(__dirname, subCmd), subArgs, {stdio: 'inherit'});
+    const subCmd = args[0] === 'init' ? 'aiwriter-init-info.js' : 'aiwriter-interview.js';
+    const child = spawn(path.join(__dirname, subCmd), args.slice(1), {stdio: 'inherit'});
     child.on('close', (code) => process.exit(code));
     return;
+  }
   case 'feedback':
     await runFeedback(args.slice(1));
     break;
@@ -348,7 +345,7 @@ async function runDraft(args) {
     const versions = dm.getVersions(args[1]);
     if (!versions.length) return console.log('📭 暂无版本历史');
     console.log(`📋 版本历史 (${versions.length} 个版本):\n`);
-    versions.forEach((v, i) => {
+    versions.forEach((v, _i) => {
       console.log(`  v${v.version} - ${v.title}`);
       console.log(`      ${v.message || '无说明'} | ${v.createdAt}`);
       console.log(`      by ${v.createdBy}`);
@@ -434,7 +431,7 @@ async function runReview(args) {
     if (!reviews.length) return console.log('📭 暂无待审核内容');
     console.log(`📋 待审核列表 (${reviews.length} 个):\n`);
     reviews.forEach((r, i) => {
-      const draft = dm.getDraft(r.draftId);
+      const _draft = dm.getDraft(r.draftId);
       console.log(`${i + 1}. ${r.draftSnapshot?.title || r.draftId}`);
       console.log(`   平台: ${r.draftSnapshot?.platform} | 提交人: ${r.submittedBy}`);
       console.log(`   提交时间: ${r.submittedAt}`);

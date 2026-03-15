@@ -198,10 +198,11 @@ async function main() {
   const account = args[1] || 'stone';
 
   switch (command) {
-  case 'check':
+  case 'check': {
     const result = checkInfoCard(account);
     showCheckResult(result);
     break;
+  }
 
   case 'profile':
     await collectProfile(account);

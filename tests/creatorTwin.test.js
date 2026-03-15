@@ -32,7 +32,7 @@ describe('CreatorTwin', () => {
     // 清理测试数据
     try {
       twin.reset();
-    } catch (e) {
+    } catch (_e) {
       // 忽略清理错误
     }
   });

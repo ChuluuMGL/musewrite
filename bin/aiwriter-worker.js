@@ -114,6 +114,7 @@ async function processTask(task) {
 async function main() {
   const runningTasks = new Map();
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
       // 获取待处理任务

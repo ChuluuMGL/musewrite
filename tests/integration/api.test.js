@@ -5,7 +5,7 @@
 const path = require('path');
 const http = require('http');
 
-const ROOT = path.join(__dirname, '..', '..');
+const _ROOT = path.join(__dirname, '..', '..');
 
 describe('API Integration', () => {
   let server;

@@ -2,7 +2,7 @@
  * StorageAdapter 和 KnowledgeSource 测试
  */
 
-const {StorageAdapter, LocalStorage, iCloudStorage} = require('../lib/storage/StorageAdapter');
+const {StorageAdapter, LocalStorage, iCloudStorage: _iCloudStorage} = require('../lib/storage/StorageAdapter');
 
 const {
   KnowledgeSource,

@@ -176,9 +176,9 @@ async function handleGenerate(body, taskId = null) {
     checklist = feedbackManager.getChecklist(platform || 'xiaohongshu', info || 'stone');
 
   // 获取偏好提示词（如果启用）
-  let _preferencePrompt = '';
+  let preferencePrompt = '';
   if (learnPreferences !== false) {
-    _preferencePrompt = preferenceLearner.formatForPrompt();
+    preferencePrompt = preferenceLearner.formatForPrompt();
   }
 
   // Use the shared coordinator instance
@@ -191,7 +191,8 @@ async function handleGenerate(body, taskId = null) {
     platform || 'xiaohongshu',
     image,
     model,
-    apiKey
+    apiKey,
+    preferencePrompt
   );
   const quality = checker.check(draft);
 
@@ -401,6 +402,12 @@ const server = http.createServer(async (req, res) => {
       const feedbacks = feedbackManager.listFeedback(days);
       res.writeHead(200);
       res.end(JSON.stringify({success: true, feedbacks, count: feedbacks.length}));
+    } else if (pathname === '/api/v1/learn' && req.method === 'POST') {
+      const body = await readBody(req);
+      const {original, edited, context} = body;
+      const result = _handleDraftEdit(null, original, edited, context);
+      res.writeHead(200);
+      res.end(JSON.stringify(result));
     } else if (pathname === '/api/v1/feedback/analyze' && req.method === 'GET') {
       const days = parseInt(url.searchParams.get('days')) || 30;
       const analysis = feedbackManager.analyzeFeedback(days);

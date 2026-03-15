@@ -7,7 +7,7 @@
 
 const http = require('http');
 const fs = require('fs');
-const path = require('path');
+const _path = require('path');
 
 const PORT = 18063;
 const API_URL = 'http://localhost:18062';
@@ -136,7 +136,7 @@ ${
         try {
           const log = JSON.parse(line);
           return `<div>[${log.timestamp}] ${log.method} ${log.url} → ${log.statusCode} (${log.durationMs}ms)</div>`;
-        } catch (e) {
+        } catch (_e) {
           return '';
         }
       })

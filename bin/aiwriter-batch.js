@@ -8,7 +8,7 @@
  */
 
 const fs = require('fs');
-const path = require('path');
+const _path = require('path');
 const fetch = require('node-fetch');
 
 // 解析命令行参数
@@ -138,7 +138,7 @@ async function main() {
 
   for (let i = 0; i < sources.length; i += params.concurrency) {
     const batch = sources.slice(i, i + params.concurrency);
-    const promises = batch.map(async (row, idx) => {
+    const promises = batch.map(async (row, _idx) => {
       const source = row.source || row.content || row.text || '';
       const result = await generate(source, params.platform, params.account);
 
