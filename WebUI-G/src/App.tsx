@@ -1559,9 +1559,9 @@ export default function App() {
 
   // 2. Main Integrated Layout
   const renderMainLayout = () => (
-    <div className="flex h-screen bg-[var(--background)] overflow-hidden transition-colors duration-300">
-      {/* Rail Navigation (Far Left) */}
-      <aside className="w-[56px] bg-[var(--surface-low)] border-r border-border-subtle flex flex-col items-center py-5 gap-5 shrink-0 z-20">
+    <div className="flex flex-col md:flex-row h-screen bg-[var(--background)] overflow-hidden transition-colors duration-300">
+      {/* Rail Navigation (Far Left / Bottom on mobile) */}
+      <aside className="w-full md:w-[56px] h-14 md:h-auto bg-[var(--surface-low)] border-t md:border-t-0 md:border-r border-border-subtle flex flex-row md:flex-col items-center justify-around md:justify-start md:py-5 md:gap-5 shrink-0 z-50 order-last md:order-first">
         <div
           onClick={() => {
             handleTabClick("selection")
@@ -1574,7 +1574,7 @@ export default function App() {
             创作页面
           </div>
         </div>
-        <nav className="flex flex-col gap-1">
+        <nav className="flex flex-row md:flex-col gap-1">
           <button
             onClick={() => handleTabClick("history")}
             className={`group relative w-8 h-8 flex items-center justify-center rounded-md transition-all ${sidebarTab === "history" && isSidebarOpen ? "bg-white dark:bg-surface-high text-black dark:text-white shadow-sm border border-black/5 dark:border-white/10" : "text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5"}`}
@@ -1615,7 +1615,7 @@ export default function App() {
             </div>
           </button>
         </nav>
-        <div className="mt-auto flex flex-col gap-3">
+        <div className="md:mt-auto hidden md:flex flex-col gap-3">
           <button
             onClick={toggleTheme}
             className="group relative group/theme w-8 h-8 flex items-center justify-center rounded-md transition-all text-[#A1A1A1] hover:text-black dark:hover:text-white hover:bg-[#F0F0F0] dark:hover:bg-white/5"
@@ -1671,17 +1671,28 @@ export default function App() {
         </div>
       </aside>
 
-      {/* Dynamic Sidebar (Expandable) */}
-      <AnimatePresence initial={false}>
-        {isSidebarOpen && (
-          <motion.aside
-            initial={{width: 0, opacity: 0}}
-            animate={{width: 320, opacity: 1}}
-            exit={{width: 0, opacity: 0}}
-            transition={{type: "spring", stiffness: 300, damping: 30}}
-            className="flex flex-col bg-[var(--surface-mid)] border-r border-border-subtle overflow-hidden relative"
-          >
-            <div className="p-6 flex-1 overflow-y-auto custom-scrollbar space-y-10 min-w-[240px]">
+          <AnimatePresence>
+            {isSidebarOpen && (
+              <motion.div
+                initial={{opacity: 0}}
+                animate={{opacity: 1}}
+                exit={{opacity: 0}}
+                onClick={() => setIsSidebarOpen(false)}
+                className="absolute inset-0 z-30 bg-black/20 md:hidden backdrop-blur-sm"
+              />
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence initial={false}>
+            {isSidebarOpen && (
+              <motion.aside
+                initial={{width: 0, opacity: 0}}
+                animate={{width: 320, opacity: 1}}
+                exit={{width: 0, opacity: 0}}
+                transition={{type: "spring", stiffness: 300, damping: 30}}
+                className="absolute md:relative z-40 h-full flex flex-col bg-[var(--surface-mid)] border-r border-border-subtle overflow-hidden"
+              >
+                <div className="p-6 flex-1 overflow-y-auto custom-scrollbar space-y-10 min-w-[240px]">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-[#A1A1A1]">
                   {sidebarTab === "selection" && "快速选择"}
@@ -2120,6 +2131,7 @@ export default function App() {
           </motion.aside>
         )}
       </AnimatePresence>
+
 
       {/* Global Toast */}
       <AnimatePresence>
@@ -3600,40 +3612,75 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="prose dark:prose-invert max-w-none space-y-6 text-[#666] dark:text-[#A1A1A1] leading-relaxed">
-                      <p>
-                        MuseWrite 是一款为您量身定制的 AI
-                        创作助手。它基于先进的四层卡片系统，旨在让创作过程如流水般自然。
+                    <div className="prose dark:prose-invert max-w-none space-y-8 text-[#666] dark:text-[#A1A1A1] leading-relaxed">
+                      <p className="text-lg text-center font-medium text-black dark:text-white mb-8">
+                        MuseWrite 是一款为您量身定制的专业 AI 创作助手，致力于让跨平台写作与分发如流水般自然。
                       </p>
 
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="p-6 border border-border-subtle rounded-2xl">
-                          <h4 className="font-bold text-black dark:text-white mb-2">
-                            四层卡片系统
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="p-8 border border-border-subtle rounded-3xl bg-white dark:bg-[#1A1A1A] shadow-sm hover:shadow-md transition-all">
+                          <div className="w-12 h-12 bg-black dark:bg-white text-white dark:text-black rounded-2xl flex items-center justify-center mb-6">
+                            <Layers size={24} />
+                          </div>
+                          <h4 className="font-bold text-lg text-black dark:text-white mb-3">
+                            首创四层卡片架构
                           </h4>
-                          <p className="text-xs">
-                            素材卡 → 信息卡 → 风格卡 → 平台卡，构建完整的创作逻辑。
+                          <p className="text-sm">
+                            打破传统 Prompt 的繁琐，通过「素材卡 → 信息卡 → 风格卡 → 平台卡」的组合，将复杂的指令编写降维为直觉化的卡片勾选。
                           </p>
                         </div>
-                        <div className="p-6 border border-border-subtle rounded-2xl">
-                          <h4 className="font-bold text-black dark:text-white mb-2">多平台适配</h4>
-                          <p className="text-xs">
-                            支持 16+ 个主流平台，自动适配发布规范与配图比例。
+                        <div className="p-8 border border-border-subtle rounded-3xl bg-white dark:bg-[#1A1A1A] shadow-sm hover:shadow-md transition-all">
+                          <div className="w-12 h-12 bg-black dark:bg-white text-white dark:text-black rounded-2xl flex items-center justify-center mb-6">
+                            <Cpu size={24} />
+                          </div>
+                          <h4 className="font-bold text-lg text-black dark:text-white mb-3">
+                            Creator Twin (数字孪生)
+                          </h4>
+                          <p className="text-sm">
+                            告别生硬的「机器味」。系统内置 <span className="font-bold text-black dark:text-white">静默偏好学习器 (PreferenceLearner)</span>，会在您每次手动修改草稿后，悄无声息地学习您的删减习惯、Emoji 密度和句子长短。不用配置，它会越用越懂您的专属语感。
+                          </p>
+                        </div>
+                        <div className="p-8 border border-border-subtle rounded-3xl bg-white dark:bg-[#1A1A1A] shadow-sm hover:shadow-md transition-all">
+                          <div className="w-12 h-12 bg-black dark:bg-white text-white dark:text-black rounded-2xl flex items-center justify-center mb-6">
+                            <Globe size={24} />
+                          </div>
+                          <h4 className="font-bold text-lg text-black dark:text-white mb-3">
+                            双轨制平台引擎
+                          </h4>
+                          <p className="text-sm">
+                            精确到字数、话题数、配图比例的「中国+全球」多平台排版自适应。只需一次创作，自动裂变适配小红书、微信公众号、Twitter 等展现要求。
+                          </p>
+                        </div>
+                        <div className="p-8 border border-border-subtle rounded-3xl bg-white dark:bg-[#1A1A1A] shadow-sm hover:shadow-md transition-all">
+                          <div className="w-12 h-12 bg-black dark:bg-white text-white dark:text-black rounded-2xl flex items-center justify-center mb-6">
+                            <Zap size={24} />
+                          </div>
+                          <h4 className="font-bold text-lg text-black dark:text-white mb-3">
+                            BYOK 极低成本
+                          </h4>
+                          <p className="text-sm">
+                            支持填入您自己的 API Key (Bring Your Own Key)，无缝接入 20+ 款顶级大语言模型，告别按月收取高额订阅费的「智商税」。
                           </p>
                         </div>
                       </div>
 
-                      <div className="p-6 bg-surface-low rounded-2xl space-y-4">
-                        <h4 className="font-bold text-black dark:text-white">致谢</h4>
-                        <p className="text-xs">感谢 Google Gemini 提供强大的 AI 能力支持。</p>
+                      <div className="p-8 bg-surface-low rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 mt-12 border border-border-subtle">
+                        <div>
+                          <h4 className="font-bold text-black dark:text-white text-lg">
+                            准备好开启高效创作了吗？
+                          </h4>
+                          <p className="text-sm mt-1">
+                            所有的配置和备份都在您的掌控之中（请见“数据存储”）。
+                          </p>
+                        </div>
                         <div className="flex gap-4">
                           <a
                             href="https://github.com/ChuluuMGL/musewrite"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs font-bold text-black dark:text-white flex items-center gap-1 hover:underline"
+                            className="px-6 py-3 bg-black dark:bg-white text-white dark:text-black font-bold text-sm rounded-xl hover:opacity-90 transition-all flex items-center gap-2"
                           >
-                            <ExternalLink size={12} /> GitHub 仓库
+                            <Github size={18} /> 开源仓库
                           </a>
                         </div>
                       </div>

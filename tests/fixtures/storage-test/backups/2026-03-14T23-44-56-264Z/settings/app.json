@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "createdAt": "2026-03-13T10:01:37.324Z",
+  "defaultPersona": null,
+  "defaultStyle": null,
+  "platforms": [
+    "xiaohongshu",
+    "douyin",
+    "wechat"
+  ],
+  "theme": "dark",
+  "language": "zh-CN",
+  "updatedAt": "2026-03-14T23:44:56.250Z"
+}
