@@ -2101,6 +2101,12 @@ export default function App() {
                       icon={<Globe size={16} />}
                     />
                     <SettingsNavItem
+                      label="风格学习"
+                      active={mainView === "creator-twin"}
+                      onClick={() => setMainView("creator-twin")}
+                      icon={<Cpu size={16} />}
+                    />
+                    <SettingsNavItem
                       label="数据存储"
                       active={mainView === "data-settings"}
                       onClick={() => setMainView("data-settings")}
